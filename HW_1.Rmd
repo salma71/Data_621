@@ -1,0 +1,101 @@
+---
+title: "Homework 1"
+author: "Dhairav Chhatbar, Mael Illien, Salma Elshahawy"
+date: '08/31/2020'
+output:
+  pdf_document:
+    includes:
+      in_header: header.tex
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  html_document:
+    toc: yes
+    toc_depth: '2'
+---
+
+\begin{center}
+\bigskip
+\bigskip
+\bigskip
+Prepared for:\\
+\medskip
+Dr. Nasrin Khansari\\
+\smallskip
+City University of New York, School of Professional Studies - Data 621\\
+\bigskip
+Prepared by:\\
+\medskip
+
+Dhairav Chhatbar\\ 
+\smallskip
+Mael Illien\\
+\smallskip
+Salma Elshahawy\\  
+
+\end{center}
+
+```{r, include = FALSE}
+library(pacman)
+```
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+The ability to analyize and predict performance of a professional baseball team using many dimensions is critical to competitive success for our organization. Therefore, we have analyzed the records of numerous professional baseball team from the years 1871 to 2006. Our hope is that the following report and the resulting predictive models will better inform the organization and assist in making data driven decisions moving forward. 
+
+"The goal of a baseball team is to win more games than any other team. Since one team has very little control over the number of games other teams win, the goal is essentially to win as many games as possible. Therefore, it is of interest to measure the player's contribution to the team's wins." Grabiner, B. D. [^1] While we do not have the variables at the player's individual contribution level, we do have the entire teams contributions as an aggregate and will analyze that information. 
+
+[^1]: (Grabiner, B. D. (n.d.). [The Sabermetric Manifesto.](http://seanlahman.com/baseball-archive/sabermetrics/sabermetric-manifesto/) Retrieved September 10, 2016 from http://seanlahman.com/baseball-archive/sabermetrics/sabermetric-manifesto/) 
+
+# Statement of the Problem
+
+The purpose of this report is to determine the batting, baserun, pitching, and fielding effects on a baseball team's ability to win.  
+
+\newpage
+# Data Exploration  
+
+Note that each record has the performance of the team for the given year, with all of the statistics adjusted to match the performance of a 162 game season. The following Table 1 - Descriptive Statistics provides the detailed descriptive statistics regarding our variable of interest - Number of Wins and our possible explanatory variables. 
+
+We noted that several variables were missing a nontrivial amount of observations and these variables are Strikeouts by batters, Stolen Bases, Caught stealing, Batters hit by pitch (get a free base), Strikeouts by pitcher, and Double plays. So we will need to address the missing values for further analysis. 
+
+Histograms of all of the variables have been plotted below so that the distribution of the data can be visualized. In the distribution for the number of walks allowed, only two bars exist due to the excessive number of outliers.
+
+
+## Imputing Missing Values  
+
+In order to address the missing values in our variables we used a nonparametric imputation method (Random Forest) to impute missing values. Several variables have a significant amount of skew, which include the number of base hits by batters and the number of walks allowed. Correspondingly, these two variables had a skew of 1.57 and 6.74 respectively. Therefore, we chose a nonparametric method due to several variables having significant skew and having a non-normal distribution. 
+
+\newpage 
+
+## Correlation Matrix 
+
+After competing the imputation, we can implement a correlation matrix to better understand the correlation between variables in the data set. The below matrix is the results and as expected, Number of Wins appears to be most correlated to Base Hits by batters (1B,2B,3B,HR). 
+
+\newpage
+
+# Data Preparation  
+
+## Outliers 
+
+## Box Cox Transformation
+
+\newpage
+
+# Models comparasion
+
+# Selected Model 
+
+# Prediction on Evaluation Data
+
+\newpage
+
+# Appendix A
+
+## R source code
+
+
