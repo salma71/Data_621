@@ -68,7 +68,6 @@ Histograms of all of the variables have been plotted below so that the distribut
 
 ## Imputing Missing Values  
 
-In order to address the missing values in our variables we used a nonparametric imputation method (Random Forest) to impute missing values. Several variables have a significant amount of skew, which include the number of base hits by batters and the number of walks allowed. Correspondingly, these two variables had a skew of 1.57 and 6.74 respectively. Therefore, we chose a nonparametric method due to several variables having significant skew and having a non-normal distribution. 
 
 \newpage 
 
