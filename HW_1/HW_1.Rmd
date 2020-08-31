@@ -74,8 +74,6 @@ In order to address the missing values in our variables we used a nonparametric 
 
 ## Correlation Matrix 
 
-After competing the imputation, we can implement a correlation matrix to better understand the correlation between variables in the data set. The below matrix is the results and as expected, Number of Wins appears to be most correlated to Base Hits by batters (1B,2B,3B,HR). 
-
 \newpage
 
 # Data Preparation  
