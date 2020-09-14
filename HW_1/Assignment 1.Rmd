@@ -1,0 +1,139 @@
+---
+title: "Data 621 - Assignment 1"
+author: "Dhairav Chhatbar"
+date: "9/9/2020"
+output: html_document
+---
+
+```{r, message=FALSE, warning=FALSE}
+library(skimr)
+library(ggplot2)
+library(ggcorrplot)
+library(dplyr)
+library(tidyr)
+library(PerformanceAnalytics)
+```
+
+
+```{r}
+data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-evaluation-data.csv", header = TRUE)
+data_train <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-training-data.csv", header = TRUE)
+
+
+```
+
+```{r}
+dim(data_train)
+```
+
+```{r}
+# list types for each attribute
+sapply(data_train, class)
+```
+
+```{r}
+skim(data_train)
+```
+
+```{r message=FALSE, warning=FALSE}
+library(kableExtra)
+data_train %>% 
+  gather(variable, value) %>%
+  filter(is.na(value)) %>%
+  group_by(variable) %>%
+  tally() %>%
+  mutate(percent = n / nrow(data_train) * 100) %>%
+  mutate(percent = paste0(round(percent, ifelse(percent < 10, 1, 0)), "%")) %>%
+  arrange(desc(n)) %>%
+  rename(`Variable Missing Data` = variable,
+         `Number of Records` = n,
+         `Share of Total` = percent) %>%
+  kable() %>%
+  kable_styling()
+```
+
+The hit by pitcher varriable is missing over 90% of it’s data. We will exclude it from consideration in our model.
+
+Caught stealling a base (TEAM_BASERUN_CS) is next on the list. It may be possible to predict it using TEAM_BASERUN_SB since they are strongly correlated, but there are 131 times they both are missing data.
+
+
+```{r fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+#missing_per <- as.data.frame(t(data_train %>% select(everything()) %>% #summarise_all(funs(sum(is.na(.))))/nrow(data_train))) %>% arrange(desc(V1))
+#missing_per
+
+data_train %>% 
+  select(-INDEX) %>% 
+  gather() %>% 
+  ggplot( aes(x= value)) + 
+  geom_density(fill='pink') + 
+  facet_wrap(~key, scales = 'free')
+```
+
+Let's take a closer look at the `TEAM_BASERUN_SB` 
+
+```{r fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+data_train %>% 
+  ggplot(aes(TEAM_BASERUN_SB)) + 
+  geom_histogram(bins = 50, fill = 'pink') +
+  geom_vline(aes(xintercept = mean(TEAM_BASERUN_SB, na.rm = T)), col = "red", lty = 2) +
+  geom_vline(aes(xintercept = median(TEAM_BASERUN_SB, na.rm = T)), col = "blue", lty = 2) +
+  labs(x = element_blank(),
+       y = "Count",
+       title = "Distribution of Stolen Bases",
+       caption = "* Red line is the mean value and blue is the median") + 
+  theme_classic()
+```
+
+```{r fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+ggplot(data_train, aes(x=TARGET_WINS)) + 
+    geom_histogram(aes(y=..density..),binwidth = 3, colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic()
+```
+
+
+```{r fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+to_plot <- data_train %>% 
+  dplyr::select(-INDEX)
+
+q <- cor(to_plot)
+ggcorrplot(q, type = "upper", outline.color = "white",
+           ggtheme = theme_classic,
+           colors = c("#6D9EC1", "white", "#E46726"),
+           lab = TRUE, show.legend = FALSE, tl.cex = 8, lab_size = 3) 
+
+```
+
+Correlations with Response Variable
+Let’s take a look at how the predictors are correlated with the response variable:
+```{r fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+data_train %>%
+  gather(variable, value, -TARGET_WINS) %>%
+  ggplot(., aes(value, TARGET_WINS)) + 
+  geom_point(fill = "pink", color="pink") + 
+  geom_smooth(method = "lm", se = FALSE, color = "red") + 
+  facet_wrap(~variable, scales ="free", ncol = 4) +
+  labs(x = element_blank(), y = "Wins")
+```
+
+It looks like the `TEAM_PITCHING_BB`, `TEAM_BATTING_H` , `TEAM_BATTING_BB`, `TEAM_BATTING_2B`and `TEAM_BATTING_HR` have the strongest correlations with wins. None of these correlations are particularly strong. This suggests there is a lot of ‘noise’ in these relationships due to outliers.
+
+
+### Data Prep
+```{r}
+
+
+
+```
+
+
+### Models
+```{r}
+base_data <- select(data_train, -INDEX)
+
+m1 <- lm(TARGET_WINS ~., data = base_data)
+
+summary(m1)
+```
+
+
