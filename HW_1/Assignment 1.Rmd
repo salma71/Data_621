@@ -1,0 +1,71 @@
+---
+title: "Data 621 - Assignment 1"
+author: "Dhairav Chhatbar"
+date: "9/9/2020"
+output: html_document
+---
+
+```{r, message=FALSE, warning=FALSE}
+library(skimr)
+library(ggplot2)
+library(ggcorrplot)
+library(dplyr)
+library(tidyr)
+library(PerformanceAnalytics)
+```
+
+
+```{r}
+data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-evaluation-data.csv", header = TRUE)
+data_train <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-training-data.csv", header = TRUE)
+
+
+```
+
+```{r}
+skim(data_train)
+```
+
+
+```{r, fig.width=10, fig.height=8}
+missing_per <- as.data.frame(t(data_train %>% select(everything()) %>% summarise_all(funs(sum(is.na(.))))/nrow(data_train))) %>% arrange(desc(V1))
+missing_per
+
+data_train %>% select(-INDEX) %>%gather() %>% ggplot( aes(x= value)) + geom_density(fill='pink') + facet_wrap(~key, scales = 'free')
+
+ggplot(data_train, aes(x=TARGET_WINS)) + 
+    geom_histogram(aes(y=..density..),binwidth = 3, colour="black", fill="white") +
+    geom_density(alpha=.2, fill="green")
+```
+
+
+```{r}
+to_plot <- data_train %>% dplyr::select(-INDEX)
+q <- cor(to_plot)
+ggcorrplot(q, type = "upper", outline.color = "white",
+           ggtheme = theme_gray,
+           colors = c("#6D9EC1", "white", "#E46726"),
+           lab = TRUE, show.legend = FALSE, tl.cex = 8, lab_size = 3)
+
+```
+
+
+
+### Data Prep
+```{r}
+
+
+
+```
+
+
+### Models
+```{r}
+base_data <- select(data_train, -INDEX)
+
+m1 <- lm(TARGET_WINS ~., data = base_data)
+
+summary(m1)
+```
+
+
