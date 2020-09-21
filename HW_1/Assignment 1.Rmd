@@ -18,9 +18,24 @@ library(PerformanceAnalytics)
 ```{r}
 data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-evaluation-data.csv", header = TRUE)
 data_train <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-training-data.csv", header = TRUE)
-
-
 ```
+
+## Data Exploration
+
+## Data Preparation
+
+1. Impute missing values
+2. Combine/new variables
+3. Transforms
+
+Outliers & Leverage Points
+
+In summary, an outlier is a point whose standardized residual falls outside the interval from –2 to 2. Recall that a bad leverage point is a leverage point which is also an outlier. Thus, a bad leverage point is a leverage point whose standar- dized residual falls outside the interval from –2 to 2. On the other hand, a good leverage point is a leverage point whose standardized residual falls inside the interval from –2 to 2.
+
+Recall that the rule for simple linear regression for classifying a point as a leverage point is hii > 4/n . 
+
+## Build Models
+## Select Models
 
 ```{r}
 dim(data_train)
@@ -52,9 +67,13 @@ data_train %>%
   kable_styling()
 ```
 
-The hit by pitcher varriable is missing over 90% of it’s data. We will exclude it from consideration in our model.
+The hit by pitcher variable is missing over 90% of it’s data. We will exclude it from consideration in our model.
 
 Caught stealling a base (TEAM_BASERUN_CS) is next on the list. It may be possible to predict it using TEAM_BASERUN_SB since they are strongly correlated, but there are 131 times they both are missing data.
+
+MI: TRY
+- Drop variable if unlikely event in real life (HBP: hit by pitcher and CS: caught stealing base are rare)
+- Impute (try: mean, 0, drop)
 
 
 ```{r fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
@@ -84,11 +103,17 @@ data_train %>%
   theme_classic()
 ```
 
-```{r fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+```{r fig.height=4, fig.width=6, message=FALSE, warning=FALSE}
 ggplot(data_train, aes(x=TARGET_WINS)) + 
     geom_histogram(aes(y=..density..),binwidth = 3, colour="black", fill="red") +
     geom_density(alpha=.8, fill="pink") + 
   theme_classic()
+```
+
+```{r fig.height=4, fig.width=6, message=FALSE, warning=FALSE}
+ggplot(data_train, aes(x=INDEX, y=TARGET_WINS)) + 
+    geom_point(colour="black") +
+    theme_classic()
 ```
 
 
@@ -118,22 +143,47 @@ data_train %>%
 
 It looks like the `TEAM_PITCHING_BB`, `TEAM_BATTING_H` , `TEAM_BATTING_BB`, `TEAM_BATTING_2B`and `TEAM_BATTING_HR` have the strongest correlations with wins. None of these correlations are particularly strong. This suggests there is a lot of ‘noise’ in these relationships due to outliers.
 
+MI: 
+- TEAM_PITCHING_HR (homeruns pitched) is slightly correlated win the number of wins. This is clearly unexpected because pitched homeruns are a negative for the pitching team. 
+- TEAM_PITCHING_SO (strikeouts by pitcher) likely suffers from outliers because we'd expect strikeouts to be a positive thing for the pitching team. There is a large influential point.
+- TEAM_PITCHING_BB (walks allowed by pitcher) might suffer from outliers. We'd expected a negative correlation since a walk allowed is a negative for the pitching team.
+
 
 ### Data Prep
+
+MI:
+- New variables: TEAM_BATTING_1B: TEAM_BATTING_H - SUM(TEAM_BATTING_i) where i = 2B,3B,HR
+- Transforms
+
 ```{r}
-
-
-
+# New variable: TEAM_BATTING_1B
+base_data <- select(data_train, -INDEX)
+mod_data <- base_data %>% mutate(TEAM_BATTING_1B = base_data$TEAM_BATTING_H - select(., TEAM_BATTING_2B:TEAM_BATTING_HR) %>% rowSums(na.rm = FALSE))
+mod_data
 ```
+
+
 
 
 ### Models
 ```{r}
-base_data <- select(data_train, -INDEX)
 
 m1 <- lm(TARGET_WINS ~., data = base_data)
 
 summary(m1)
 ```
 
+The full model Residuals vs Leverage plot shows that data point 1486 is beyond Cook's distance
+
+```{r}
+plot(m1)
+```
+
+```{r}
+mi_m1 <- lm(TARGET_WINS ~ TEAM_BATTING_H + TEAM_FIELDING_E, data = mod_data)
+summary(mi_m1)
+```
+```{r}
+plot(mi_m1)
+```
 
