@@ -110,12 +110,6 @@ ggplot(data_train, aes(x=TARGET_WINS)) +
   theme_classic()
 ```
 
-```{r fig.height=4, fig.width=6, message=FALSE, warning=FALSE}
-ggplot(data_train, aes(x=INDEX, y=TARGET_WINS)) + 
-    geom_point(colour="black") +
-    theme_classic()
-```
-
 
 ```{r fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 to_plot <- data_train %>% 
@@ -151,17 +145,62 @@ MI:
 
 ### Data Prep
 
+```{r}
+data_train <- data_train %>%
+  mutate(TEAM_BATTING_SO = ifelse(TEAM_BATTING_SO == 0, NA, TEAM_BATTING_SO)) %>%
+  mutate(TEAM_PITCHING_SO = ifelse(TEAM_PITCHING_SO > 5346, NA, TEAM_PITCHING_SO)) %>%
+  select(-TEAM_BATTING_HBP)
+```
+
+```{r}
+set.seed(42)
+library(caret)
+preProcValues <- preProcess(data_train %>% 
+                          dplyr::select(TEAM_BATTING_SO, TEAM_BASERUN_SB, TEAM_BASERUN_CS, TEAM_PITCHING_SO, TEAM_FIELDING_DP),
+                            method = c("knnImpute"),
+                            k = 20,
+                            knnSummary = mean)
+```
+
+```{r}
+
+```
+
 MI:
 - New variables: TEAM_BATTING_1B: TEAM_BATTING_H - SUM(TEAM_BATTING_i) where i = 2B,3B,HR
 - Transforms
 
-```{r}
+```{r message=FALSE, warning=FALSE, paged.print=TRUE}
 # New variable: TEAM_BATTING_1B
-base_data <- select(data_train, -INDEX)
-mod_data <- base_data %>% mutate(TEAM_BATTING_1B = base_data$TEAM_BATTING_H - select(., TEAM_BATTING_2B:TEAM_BATTING_HR) %>% rowSums(na.rm = FALSE))
-mod_data
+add_features <- function(df){
+  df %>%
+    mutate(TEAM_BATTING_1B = TEAM_BATTING_H - TEAM_BATTING_2B - TEAM_BATTING_3B - TEAM_BATTING_HR)
+}
+
+data_train <- add_features(data_train)
+data_test <- add_features(data_test)
 ```
 
+
+```{r fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+data_train %>% 
+  select(-INDEX) %>% 
+  gather() %>% 
+  ggplot( aes(x= value)) + 
+  geom_density(fill='pink') + 
+  facet_wrap(~key, scales = 'free')
+```
+
+```{r}
+quick_summary <- function(df){
+  df %>%
+    summary() %>%
+    kable() %>%
+    kable_styling()
+}
+
+quick_summary(mod_data)
+```
 
 
 
