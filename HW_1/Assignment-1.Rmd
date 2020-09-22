@@ -1,5 +1,5 @@
 ---
-title: "Data 621 - Assignment1"
+title: "Data 621 - Assignment 1"
 author: "Dhairav Chhatbar"
 date: "9/9/2020"
 output: html_document
