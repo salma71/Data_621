@@ -1,0 +1,258 @@
+---
+title: "Data 621 - Homework_1"
+author: "Dhairav Chhatbar, Mael Illien, Salma Elshahawy"
+date: "9/9/2020"
+output: 
+  html_document:
+    code_folding: hide
+    theme: cosmo
+    highlight: tango
+    toc: true
+    number_section: false
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    df_print: paged
+---
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
+library(skimr)
+library(ggplot2)
+library(ggcorrplot)
+library(dplyr)
+library(tidyr)
+library(PerformanceAnalytics)
+library(DMwR)
+library(caret)
+library(kableExtra)
+library(DescTools)
+library(cowplot)
+```
+
+
+
+```{r message=FALSE, warning=FALSE}
+data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-evaluation-data.csv", header = TRUE) %>%select(-INDEX)
+data_train <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-training-data.csv", header = TRUE) %>% select(-INDEX)
+```
+
+
+
+## Data Exploration
+
+```{r data_dimension_train, message=FALSE, warning=FALSE}
+dim(data_train)
+```
+
+```{r data_dimension_test, message=FALSE, warning=FALSE}
+dim(data_test)
+``` 
+
+
+```{r data_types, message=FALSE, warning=FALSE}
+# list types for each attribute
+sapply(data_train, class)
+```
+
+```{r data_summary_train, message=FALSE, warning=FALSE}
+skim(data_train)
+```
+
+```{r data_summary_test, message=FALSE, warning=FALSE}
+skim(data_test)
+```
+
+```{r explore_missing_data_train, message=FALSE, warning=FALSE}
+data_train %>% 
+  gather(variable, value) %>%
+  filter(is.na(value)) %>%
+  group_by(variable) %>%
+  tally() %>%
+  mutate(percent = n / nrow(data_train) * 100) %>%
+  mutate(percent = paste0(round(percent, ifelse(percent < 10, 1, 0)), "%")) %>%
+  arrange(desc(n)) %>%
+  rename(`Variable Missing Data` = variable,
+         `Number of Records` = n,
+         `Share of Total` = percent) %>%
+  kable() %>%
+  kable_styling()
+```
+
+```{r explore_missing_data_test, message=FALSE, warning=FALSE}
+data_test %>% 
+  gather(variable, value) %>%
+  filter(is.na(value)) %>%
+  group_by(variable) %>%
+  tally() %>%
+  mutate(percent = n / nrow(data_train) * 100) %>%
+  mutate(percent = paste0(round(percent, ifelse(percent < 10, 1, 0)), "%")) %>%
+  arrange(desc(n)) %>%
+  rename(`Variable Missing Data` = variable,
+         `Number of Records` = n,
+         `Share of Total` = percent) %>%
+  kable() %>%
+  kable_styling()
+```
+
+
+### Data Visualization
+
+```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+data_train %>% 
+  gather() %>% 
+  ggplot( aes(x= value)) + 
+  geom_density(fill='pink') + 
+  facet_wrap(~key, scales = 'free')
+```
+
+Let's take a closer look at the `TEAM_BASERUN_SB` 
+
+```{r explore_Baserunsb, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+data_train %>% 
+  ggplot(aes(TEAM_BASERUN_SB)) + 
+  geom_histogram(bins = 50, fill = 'pink') +
+  geom_vline(aes(xintercept = mean(TEAM_BASERUN_SB, na.rm = T)), col = "red", lty = 2) +
+  geom_vline(aes(xintercept = median(TEAM_BASERUN_SB, na.rm = T)), col = "blue", lty = 2) +
+  labs(x = element_blank(),
+       y = "Count",
+       title = "Distribution of Stolen Bases",
+       caption = "* Red line is the mean value and blue is the median") + 
+  theme_classic()
+```
+
+```{r dependent_var_distribution, fig.height=4, fig.width=6, message=FALSE, warning=FALSE}
+ggplot(data_train, aes(x=TARGET_WINS)) + 
+    geom_histogram(aes(y=..density..),binwidth = 3, colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic()
+```
+
+Correlations with Response Variable
+Let’s take a look at how the predictors are correlated with the response variable:
+
+```{r correlations_plot, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+q <- cor(data_train)
+ggcorrplot(q, type = "upper", outline.color = "white",
+           ggtheme = theme_classic,
+           colors = c("#6D9EC1", "white", "#E46726"),
+           lab = TRUE, show.legend = FALSE, tl.cex = 8, lab_size = 3) 
+```
+
+```{r predictors_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+data_train %>%
+  gather(variable, value, -TARGET_WINS) %>%
+  ggplot(., aes(value, TARGET_WINS)) + 
+  geom_point(fill = "pink", color="pink") + 
+  geom_smooth(method = "lm", se = FALSE, color = "red") + 
+  facet_wrap(~variable, scales ="free", ncol = 4) +
+  labs(x = element_blank(), y = "Wins")
+```
+
+## Data Preparation
+
+```{r check_na_train_before, message=FALSE, warning=FALSE}
+sum(is.na(data_train))/prod(dim(data_train))
+```
+
+```{r impute_data_train, message=FALSE, warning=FALSE}
+data_train <- data_train %>%
+  mutate(TEAM_BATTING_SO = ifelse(TEAM_BATTING_SO == 0, NA, TEAM_BATTING_SO)) %>%
+  mutate(TEAM_PITCHING_SO = ifelse(TEAM_PITCHING_SO > 5346, NA, TEAM_PITCHING_SO)) %>%
+  select(-TEAM_BATTING_HBP)
+
+set.seed(42)
+knn <- data_train %>% knnImputation()
+impute_me <- is.na(data_train$TEAM_BATTING_SO)
+data_train[impute_me,"TEAM_BATTING_SO"] <- knn[impute_me,"TEAM_BATTING_SO"] 
+impute_me <- is.na(data_train$TEAM_BASERUN_SB)
+data_train[impute_me,"TEAM_BASERUN_SB"] <- knn[impute_me,"TEAM_BASERUN_SB"] 
+impute_me <- is.na(data_train$TEAM_BASERUN_CS)
+data_train[impute_me,"TEAM_BASERUN_CS"] <- knn[impute_me,"TEAM_BASERUN_CS"] 
+impute_me <- is.na(data_train$TEAM_PITCHING_SO)
+data_train[impute_me,"TEAM_PITCHING_SO"] <- knn[impute_me,"TEAM_PITCHING_SO"]
+impute_me <- is.na(data_train$TEAM_FIELDING_DP)
+data_train[impute_me,"TEAM_FIELDING_DP"] <- knn[impute_me,"TEAM_FIELDING_DP"]
+```
+
+
+```{r check_na_after, message=FALSE, warning=FALSE}
+sum(is.na(data_train))/prod(dim(data_train))
+```
+  
+Do the same for the `data_test`
+
+```{r check_na_test_before, message=FALSE, warning=FALSE}
+sum(is.na(data_test))/prod(dim(data_test))
+```
+
+```{r impute_data_test, message=FALSE, warning=FALSE}
+data_test <- data_test %>%
+  mutate(TEAM_BATTING_SO = ifelse(TEAM_BATTING_SO == 0, NA, TEAM_BATTING_SO)) %>%
+  mutate(TEAM_PITCHING_SO = ifelse(TEAM_PITCHING_SO > 5346, NA, TEAM_PITCHING_SO)) %>%
+  select(-TEAM_BATTING_HBP)
+
+set.seed(42)
+knn <- data_test %>% knnImputation()
+impute_me <- is.na(data_test$TEAM_BATTING_SO)
+data_test[impute_me,"TEAM_BATTING_SO"] <- knn[impute_me,"TEAM_BATTING_SO"] 
+impute_me <- is.na(data_test$TEAM_BASERUN_SB)
+data_test[impute_me,"TEAM_BASERUN_SB"] <- knn[impute_me,"TEAM_BASERUN_SB"] 
+impute_me <- is.na(data_test$TEAM_BASERUN_CS)
+data_test[impute_me,"TEAM_BASERUN_CS"] <- knn[impute_me,"TEAM_BASERUN_CS"] 
+impute_me <- is.na(data_test$TEAM_PITCHING_SO)
+data_test[impute_me,"TEAM_PITCHING_SO"] <- knn[impute_me,"TEAM_PITCHING_SO"]
+impute_me <- is.na(data_test$TEAM_FIELDING_DP)
+data_test[impute_me,"TEAM_FIELDING_DP"] <- knn[impute_me,"TEAM_FIELDING_DP"]
+```
+
+
+```{r check_na_test_after, message=FALSE, warning=FALSE}
+sum(is.na(data_test))/prod(dim(data_test))
+```
+
+## Models Building {.tabset .tabset-fade .tabset-pills}
+
+### Model_1 (Include all variables)
+
+```{r}
+# simple model
+m1 <- lm(TARGET_WINS ~., data = data_train, na.action = na.omit)
+
+summary(m1)
+```
+
+
+```{r}
+plot(m1)
+```
+
+
+```{r}
+m2 <- lm(TARGET_WINS ~ TEAM_BATTING_H + TEAM_BATTING_HR +TEAM_BATTING_3B +TEAM_BASERUN_CS+TEAM_FIELDING_E+ TEAM_FIELDING_DP, data = data_train)
+summary(m2)
+```
+
+```{r}
+plot(m2)
+```
+
+```{r}
+full_formula <- "TARGET_WINS ~ TEAM_BATTING_2B + TEAM_BATTING_3B + TEAM_BATTING_HR + TEAM_BATTING_BB + TEAM_BATTING_SO + TEAM_BASERUN_SB + TEAM_BASERUN_CS + TEAM_PITCHING_H + TEAM_PITCHING_HR + TEAM_PITCHING_BB + TEAM_PITCHING_SO + TEAM_FIELDING_E + TEAM_FIELDING_DP + I(TEAM_BATTING_2B^2) + I(TEAM_BATTING_3B^2) + I(TEAM_BATTING_HR^2) + I(TEAM_BATTING_BB^2) + I(TEAM_BATTING_SO^2) + I(TEAM_BASERUN_SB^2) + I(TEAM_BASERUN_CS^2) + I(TEAM_PITCHING_H^2) + I(TEAM_PITCHING_HR^2) + I(TEAM_PITCHING_BB^2) + I(TEAM_PITCHING_SO^2) + I(TEAM_FIELDING_E^2) + I(TEAM_FIELDING_DP^2)  + I(TEAM_BATTING_2B^3) + I(TEAM_BATTING_3B^3) + I(TEAM_BATTING_HR^3) + I(TEAM_BATTING_BB^3) + I(TEAM_BATTING_SO^3) + I(TEAM_BASERUN_SB^3) + I(TEAM_BASERUN_CS^3) + I(TEAM_PITCHING_H^3) + I(TEAM_PITCHING_HR^3) + I(TEAM_PITCHING_BB^3) + I(TEAM_PITCHING_SO^3) + I(TEAM_FIELDING_E^3) + I(TEAM_FIELDING_DP^3)  + I(TEAM_BATTING_2B^4) + I(TEAM_BATTING_3B^4) + I(TEAM_BATTING_HR^4) + I(TEAM_BATTING_BB^4) + I(TEAM_BATTING_SO^4) + I(TEAM_BASERUN_SB^4) + I(TEAM_BASERUN_CS^4) + I(TEAM_PITCHING_H^4) + I(TEAM_PITCHING_HR^4) + I(TEAM_PITCHING_BB^4) + I(TEAM_PITCHING_SO^4) + I(TEAM_FIELDING_E^4) + I(TEAM_FIELDING_DP^4) "
+
+m3 <- lm(full_formula, data_train)
+step_back <- MASS::stepAIC(m3, direction="backward", trace = F)
+poly_call <- summary(step_back)$call
+step_back <- lm(poly_call[2], data_train)
+summary(step_back)
+```
+
+```{r}
+plot(step_back)
+```
+
+## Model selection 
+
+In order to select which model is the “best” we will test it against a test set. We will examine the difference between the predicted and actual values. Since the wins are in whole numbers and the predict function will generate floating point numbers, I will be rounding the results.
+
+
