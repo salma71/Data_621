@@ -14,6 +14,9 @@ output:
       smooth_scroll: true
     df_print: paged
 ---
+# Data 621 Homework1 
+
+## Introduction 
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
@@ -39,7 +42,9 @@ data_train <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/maste
 
 
 
-## Data Exploration
+## Data Exploration {.tabset .tabset-fade .tabset-pills}
+
+### Data exploration
 
 ```{r data_dimension_train, message=FALSE, warning=FALSE}
 dim(data_train)
@@ -48,7 +53,6 @@ dim(data_train)
 ```{r data_dimension_test, message=FALSE, warning=FALSE}
 dim(data_test)
 ``` 
-
 
 ```{r data_types, message=FALSE, warning=FALSE}
 # list types for each attribute
@@ -62,6 +66,10 @@ skim(data_train)
 ```{r data_summary_test, message=FALSE, warning=FALSE}
 skim(data_test)
 ```
+
+---
+
+### Explore missing variables
 
 ```{r explore_missing_data_train, message=FALSE, warning=FALSE}
 data_train %>% 
@@ -79,6 +87,7 @@ data_train %>%
   kable_styling()
 ```
 
+
 ```{r explore_missing_data_test, message=FALSE, warning=FALSE}
 data_test %>% 
   gather(variable, value) %>%
@@ -95,6 +104,7 @@ data_test %>%
   kable_styling()
 ```
 
+---
 
 ### Data Visualization
 
@@ -139,6 +149,12 @@ ggcorrplot(q, type = "upper", outline.color = "white",
            lab = TRUE, show.legend = FALSE, tl.cex = 8, lab_size = 3) 
 ```
 
+MI: 
+- TEAM_PITCHING_HR (homeruns pitched) is slightly correlated win the number of wins. This is clearly unexpected because pitched homeruns are a negative for the pitching team. 
+- TEAM_PITCHING_SO (strikeouts by pitcher) likely suffers from outliers because we'd expect strikeouts to be a positive thing for the pitching team. There is a large influential point.
+- TEAM_PITCHING_BB (walks allowed by pitcher) might suffer from outliers. We'd expected a negative correlation since a walk allowed is a negative for the pitching team.
+
+
 ```{r predictors_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 data_train %>%
   gather(variable, value, -TARGET_WINS) %>%
@@ -149,7 +165,11 @@ data_train %>%
   labs(x = element_blank(), y = "Wins")
 ```
 
-## Data Preparation
+---
+
+## Data Preparation {.tabset .tabset-fade .tabset-pills}
+
+### Imputation using KNN
 
 ```{r check_na_train_before, message=FALSE, warning=FALSE}
 sum(is.na(data_train))/prod(dim(data_train))
@@ -179,7 +199,9 @@ data_train[impute_me,"TEAM_FIELDING_DP"] <- knn[impute_me,"TEAM_FIELDING_DP"]
 ```{r check_na_after, message=FALSE, warning=FALSE}
 sum(is.na(data_train))/prod(dim(data_train))
 ```
-  
+
+--- 
+
 Do the same for the `data_test`
 
 ```{r check_na_test_before, message=FALSE, warning=FALSE}
@@ -211,33 +233,275 @@ data_test[impute_me,"TEAM_FIELDING_DP"] <- knn[impute_me,"TEAM_FIELDING_DP"]
 sum(is.na(data_test))/prod(dim(data_test))
 ```
 
-## Models Building {.tabset .tabset-fade .tabset-pills}
 
-### Model_1 (Include all variables)
+---
+
+### Data Transformation 
+
+```{r create_new_var, message=FALSE, warning=FALSE}
+# New variable: TEAM_BATTING_1B
+temp_data <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-training-data.csv", header = TRUE) %>% select(-INDEX)
+base_data <- temp_data
+mod_data <- base_data %>% mutate(TEAM_BATTING_1B = base_data$TEAM_BATTING_H - select(., TEAM_BATTING_2B:TEAM_BATTING_HR) %>% rowSums(na.rm = FALSE))
+head(mod_data)
+```
+
+
+```{r data_transformation, warning=FALSE, message=FALSE, fig.height=15, fig.width=5}
+data_transformed <- mod_data
+
+#Log transform TEAM_BASERUN_CS
+data_transformed$TEAM_BASERUN_CS_tform <-log(data_transformed$TEAM_BASERUN_CS)
+baserun_cs <- ggplot(data_transformed, aes(x=TEAM_BASERUN_CS)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "TEAM_BASERUN_CS")
+baserun_cs_tf <- ggplot(data_transformed, aes(x=TEAM_BASERUN_CS_tform)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "Log Transformed")
+
+#Log transform TEAM_BASERUN_SB
+data_transformed$TEAM_BASERUN_SB_tform <-log(data_transformed$TEAM_BASERUN_SB)
+baserun_sb <- ggplot(data_transformed, aes(x=TEAM_BASERUN_SB)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "TEAM_BASERUN_SB")
+baserun_sb_tf <- ggplot(data_transformed, aes(x=TEAM_BASERUN_SB_tform)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "Log Transformed")
+
+#Log transform TEAM_BATTING_3B
+data_transformed$TEAM_BATTING_3B_tform <-log(data_transformed$TEAM_BATTING_3B)
+batting_3b <- ggplot(data_transformed, aes(x=TEAM_BATTING_3B)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "TEAM_BATTING_3B")
+batting_3b_tf <- ggplot(data_transformed, aes(x=TEAM_BATTING_3B_tform)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "Log Transformed")
+
+#BoxCoxtransform TEAM_BATTING_BB
+data_transformed$TEAM_BATTING_BB_tform <- BoxCox(data_transformed$TEAM_BATTING_BB, BoxCoxLambda(data_transformed$TEAM_BATTING_BB))
+batting_bb <- ggplot(data_transformed, aes(x=TEAM_BATTING_BB)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "TEAM_BATTING_BB")
+batting_bb_tf <- ggplot(data_transformed, aes(x=TEAM_BATTING_BB_tform)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "BoxCox Transformed")
+
+#BoxCoxtransform TEAM_BATTING_H
+data_transformed$TEAM_BATTING_H_tform <- BoxCox(data_transformed$TEAM_BATTING_H, BoxCoxLambda(data_transformed$TEAM_BATTING_H))
+batting_h <- ggplot(data_transformed, aes(x=TEAM_BATTING_H)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "TEAM_BATTING_H")
+batting_h_tf <- ggplot(data_transformed, aes(x=TEAM_BATTING_H_tform)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "BoxCox Transformed")
+
+#BoxCoxtransform TEAM_BATTING_1B
+data_transformed$TEAM_BATTING_1B_tform <- BoxCox(data_transformed$TEAM_BATTING_1B, BoxCoxLambda(data_transformed$TEAM_BATTING_1B))
+batting_1b <- ggplot(data_transformed, aes(x=TEAM_BATTING_1B)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "TEAM_BATTING_1B")
+batting_1b_tf <- ggplot(data_transformed, aes(x=TEAM_BATTING_1B_tform)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "BoxCox Transformed")
+
+#BoxCoxtransform TEAM_FIELDING_E
+data_transformed$TEAM_FIELDING_E_tform <- BoxCox(data_transformed$TEAM_FIELDING_E, BoxCoxLambda(data_transformed$TEAM_FIELDING_E))
+fielding_e <- ggplot(data_transformed, aes(x=TEAM_FIELDING_E)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "TEAM_FIELDING_E")
+fielding_e_tf <- ggplot(data_transformed, aes(x=TEAM_FIELDING_E_tform)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "BoxCox Transformed")
+
+#Log transform TEAM_PITCHING_BB
+data_transformed$TEAM_PITCHING_BB_tform <-log(data_transformed$TEAM_PITCHING_BB)
+pitching_bb <- ggplot(data_transformed, aes(x=TEAM_PITCHING_BB)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "TEAM_PITCHING_BB")
+pitching_bb_tf <- ggplot(data_transformed, aes(x=TEAM_PITCHING_BB_tform)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "Log Transformed")
+
+#BoxCoxtransform TEAM_PITCHING_H
+data_transformed$TEAM_PITCHING_H_tform <- BoxCox(data_transformed$TEAM_PITCHING_H, BoxCoxLambda(data_transformed$TEAM_PITCHING_H))
+pitching_h <- ggplot(data_transformed, aes(x=TEAM_PITCHING_H)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "TEAM_PITCHING_H")
+pitching_h_tf <- ggplot(data_transformed, aes(x=TEAM_PITCHING_H_tform)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "BoxCox Transformed")
+
+#Log transform TEAM_PITCHING_SO
+data_transformed$TEAM_PITCHING_SO_tform <-log(data_transformed$TEAM_PITCHING_SO)
+pitching_so <- ggplot(data_transformed, aes(x=TEAM_PITCHING_SO)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "TEAM_PITCHING_SO")
+pitching_so_tf <- ggplot(data_transformed, aes(x=TEAM_PITCHING_SO_tform)) + 
+    geom_histogram(aes(y=..density..), colour="black", fill="red") +
+    geom_density(alpha=.8, fill="pink") + 
+  theme_classic() + labs(title = "Log Transformed")
+plot_grid(baserun_cs, baserun_cs_tf, baserun_sb, baserun_sb_tf,
+          batting_3b, batting_3b_tf, batting_bb, batting_bb_tf,
+          batting_h, batting_h_tf, batting_1b, batting_1b_tf, 
+          fielding_e, fielding_e_tf, pitching_bb, pitching_bb_tf, 
+          pitching_h, pitching_h_tf, pitching_so, pitching_so_tf, 
+          ncol = 2)
+```
+
+Do the same for the test set
 
 ```{r}
+#Test data transformations to match model
+temp_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-evaluation-data.csv", header = TRUE) %>%select(-INDEX)
+
+mod_data_test <- temp_test %>% mutate(TEAM_BATTING_1B = TEAM_BATTING_H - select(., TEAM_BATTING_2B:TEAM_BATTING_HR) %>% rowSums(na.rm = FALSE))
+
+test_data_transformed <- mod_data_test
+
+#Log transform TEAM_BASERUN_CS
+test_data_transformed$TEAM_BASERUN_CS_tform <-log(test_data_transformed$TEAM_BASERUN_CS)
+
+#Log transform TEAM_BASERUN_SB
+test_data_transformed$TEAM_BASERUN_SB_tform <-log(test_data_transformed$TEAM_BASERUN_SB)
+
+#Log transform TEAM_BATTING_3B
+test_data_transformed$TEAM_BATTING_3B_tform <-log(test_data_transformed$TEAM_BATTING_3B)
+
+#BoxCoxtransform TEAM_BATTING_BB
+test_data_transformed$TEAM_BATTING_BB_tform <- BoxCox(test_data_transformed$TEAM_BATTING_BB, BoxCoxLambda(test_data_transformed$TEAM_BATTING_BB))
+
+#BoxCoxtransform TEAM_BATTING_H
+test_data_transformed$TEAM_BATTING_H_tform <- BoxCox(test_data_transformed$TEAM_BATTING_H, BoxCoxLambda(test_data_transformed$TEAM_BATTING_H))
+
+#BoxCoxtransform TEAM_BATTING_1B
+test_data_transformed$TEAM_BATTING_1B_tform <- BoxCox(test_data_transformed$TEAM_BATTING_1B, BoxCoxLambda(test_data_transformed$TEAM_BATTING_1B))
+
+#BoxCoxtransform TEAM_FIELDING_E
+test_data_transformed$TEAM_FIELDING_E_tform <- BoxCox(test_data_transformed$TEAM_FIELDING_E, BoxCoxLambda(test_data_transformed$TEAM_FIELDING_E))
+
+#Log transform TEAM_PITCHING_BB
+test_data_transformed$TEAM_PITCHING_BB_tform <-log(test_data_transformed$TEAM_PITCHING_BB)
+
+#BoxCoxtransform TEAM_PITCHING_H
+test_data_transformed$TEAM_PITCHING_H_tform <- BoxCox(test_data_transformed$TEAM_PITCHING_H, BoxCoxLambda(test_data_transformed$TEAM_PITCHING_H))
+
+#Log transform TEAM_PITCHING_SO
+test_data_transformed$TEAM_PITCHING_SO_tform <-log(test_data_transformed$TEAM_PITCHING_SO)
+
+```
+
+---
+ 
+
+### Feature engineering 
+
+MI: this passage is just for reference when dealing with leverage point. Can be removed later
+Outliers & Leverage Points
+
+In summary, an outlier is a point whose standardized residual falls outside the interval from –2 to 2. Recall that a bad leverage point is a leverage point which is also an outlier. Thus, a bad leverage point is a leverage point whose standar- dized residual falls outside the interval from –2 to 2. On the other hand, a good leverage point is a leverage point whose standardized residual falls inside the interval from –2 to 2.
+
+Recall that the rule for simple linear regression for classifying a point as a leverage point is hii > 4/n . 
+
+
+```{r}
+temp_holder <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-training-data.csv", header = TRUE) %>% select(-INDEX)
+
+add_features <- function(df){
+  df %>%
+    mutate(TEAM_BATTING_1B = TEAM_BATTING_H - TEAM_BATTING_2B - TEAM_BATTING_3B - TEAM_BATTING_HR)
+}
+
+data_train_mi <- add_features(temp_holder)
+# Creating "at bats" variable representing every time a batter steps up to bat
+data_train_mi <- data_train_mi %>% mutate(TEAM_BATTING_AB = TEAM_BATTING_H + TEAM_BATTING_BB + TEAM_BATTING_HBP + TEAM_BATTING_SO)
+# Creating "batting average" variable
+data_train_mi <- data_train_mi %>% mutate(TEAM_BATTING_AVG = TEAM_BATTING_H/TEAM_BATTING_AB)
+# Creating "on base percentage" representing the proportion of ways to get a base out of total opportunities to hit the ball
+data_train_mi <- data_train_mi %>% mutate(TEAM_BATTING_OBP = (TEAM_BATTING_H + TEAM_BATTING_BB + TEAM_BATTING_HBP)/(TEAM_BATTING_AB + TEAM_BATTING_BB + TEAM_BATTING_HBP))
+# Creating "slugging percentage" which is a weighted sum of hits by number of bases acquired divided by opportunities to hit the ball
+data_train_mi <- data_train_mi %>% mutate(TEAM_BATTING_SLG = (TEAM_BATTING_1B + 2*TEAM_BATTING_2B + 3*TEAM_BATTING_3B + 3*TEAM_BATTING_HR)/TEAM_BATTING_AB)
+```
+
+Encapsulating the at above into a function. (Use only one of these in final report). Function makes more sense for re-use in prediction
+
+```{r}
+add_advanced_bb_features <- function(df) {
+  df %>% 
+    mutate(TEAM_BATTING_AB = TEAM_BATTING_H + TEAM_BATTING_BB + TEAM_BATTING_HBP + TEAM_BATTING_SO) %>%
+    mutate(TEAM_BATTING_AVG = TEAM_BATTING_H/TEAM_BATTING_AB) %>%
+    mutate(TEAM_BATTING_OBP = (TEAM_BATTING_H + TEAM_BATTING_BB + TEAM_BATTING_HBP)/(TEAM_BATTING_AB + TEAM_BATTING_BB + TEAM_BATTING_HBP)) %>%
+    mutate(TEAM_BATTING_SLG = (TEAM_BATTING_1B + 2*TEAM_BATTING_2B + 3*TEAM_BATTING_3B + 3*TEAM_BATTING_HR)/TEAM_BATTING_AB)
+}
+```
+
+```{r}
+data_train_mi
+```
+
+MI: Too many values are removed. These engineered features rely on TEAM_BATTING_HBP in the calculations but this is the variable with the most missing data. Treatment of this variable will affect downstream results.
+
+
+---
+
+
+## Models Building {.tabset .tabset-fade .tabset-pills}
+
+### Model_1.1 (without transformation)
+
+Salma 
+
+```{r simple_model_building, message=FALSE, warning=FALSE}
 # simple model
 m1 <- lm(TARGET_WINS ~., data = data_train, na.action = na.omit)
 
 summary(m1)
 ```
 
+---
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 plot(m1)
 ```
 
+--- 
 
-```{r}
+### Model_1.2 (Backward elimination)
+
+```{r message=FALSE, warning=FALSE}
 m2 <- lm(TARGET_WINS ~ TEAM_BATTING_H + TEAM_BATTING_HR +TEAM_BATTING_3B +TEAM_BASERUN_CS+TEAM_FIELDING_E+ TEAM_FIELDING_DP, data = data_train)
 summary(m2)
 ```
 
-```{r}
+--- 
+
+```{r message=FALSE, warning=FALSE}
 plot(m2)
 ```
 
-```{r}
+---
+
+### Model_1.3 (polynomial regression)
+
+```{r polynomial, message=FALSE, warning=FALSE}
 full_formula <- "TARGET_WINS ~ TEAM_BATTING_2B + TEAM_BATTING_3B + TEAM_BATTING_HR + TEAM_BATTING_BB + TEAM_BATTING_SO + TEAM_BASERUN_SB + TEAM_BASERUN_CS + TEAM_PITCHING_H + TEAM_PITCHING_HR + TEAM_PITCHING_BB + TEAM_PITCHING_SO + TEAM_FIELDING_E + TEAM_FIELDING_DP + I(TEAM_BATTING_2B^2) + I(TEAM_BATTING_3B^2) + I(TEAM_BATTING_HR^2) + I(TEAM_BATTING_BB^2) + I(TEAM_BATTING_SO^2) + I(TEAM_BASERUN_SB^2) + I(TEAM_BASERUN_CS^2) + I(TEAM_PITCHING_H^2) + I(TEAM_PITCHING_HR^2) + I(TEAM_PITCHING_BB^2) + I(TEAM_PITCHING_SO^2) + I(TEAM_FIELDING_E^2) + I(TEAM_FIELDING_DP^2)  + I(TEAM_BATTING_2B^3) + I(TEAM_BATTING_3B^3) + I(TEAM_BATTING_HR^3) + I(TEAM_BATTING_BB^3) + I(TEAM_BATTING_SO^3) + I(TEAM_BASERUN_SB^3) + I(TEAM_BASERUN_CS^3) + I(TEAM_PITCHING_H^3) + I(TEAM_PITCHING_HR^3) + I(TEAM_PITCHING_BB^3) + I(TEAM_PITCHING_SO^3) + I(TEAM_FIELDING_E^3) + I(TEAM_FIELDING_DP^3)  + I(TEAM_BATTING_2B^4) + I(TEAM_BATTING_3B^4) + I(TEAM_BATTING_HR^4) + I(TEAM_BATTING_BB^4) + I(TEAM_BATTING_SO^4) + I(TEAM_BASERUN_SB^4) + I(TEAM_BASERUN_CS^4) + I(TEAM_PITCHING_H^4) + I(TEAM_PITCHING_HR^4) + I(TEAM_PITCHING_BB^4) + I(TEAM_PITCHING_SO^4) + I(TEAM_FIELDING_E^4) + I(TEAM_FIELDING_DP^4) "
 
 m3 <- lm(full_formula, data_train)
@@ -247,12 +511,93 @@ step_back <- lm(poly_call[2], data_train)
 summary(step_back)
 ```
 
-```{r}
+---
+
+```{r message=FALSE, warning=FALSE}
 plot(step_back)
 ```
 
+---
+
+### Model_2.1 (using transformation)
+
+
+Using Transformation - Dhairav
+```{r model_with_trans, message=FALSE, warning=FALSE}
+#data with all transformed variables
+m4_data <- select(data_transformed,-TEAM_BASERUN_CS, -TEAM_BASERUN_SB, -TEAM_BATTING_3B, -TEAM_BATTING_BB, -TEAM_BATTING_H, -TEAM_FIELDING_E, -TEAM_PITCHING_BB, -TEAM_PITCHING_H, -TEAM_PITCHING_SO, -TEAM_BATTING_HBP, -TEAM_BASERUN_CS, -TEAM_BATTING_1B)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+m4 <- lm(TARGET_WINS ~., data = m4_data)
+summary(m4)
+```
+
+---
+
+### Model_2.2 (Backward elimination)
+
+Using Stepwise backward elimination
+
+```{r message=FALSE, warning=FALSE}
+m4a <- update(m4, . ~ . -TEAM_PITCHING_HR)
+# summary(m4a)
+m4b <- update(m4a, . ~ . -TEAM_BATTING_1B_tform)
+# summary(m4b)
+m4c <- update(m4b, . ~ . -TEAM_PITCHING_BB_tform)
+# summary(m4c)
+m4d <- update(m4c, . ~ . -TEAM_PITCHING_SO_tform)
+# summary(m4d)
+m4e <- update(m4d, . ~ . -TEAM_PITCHING_H_tform)
+summary(m4e)
+plot(m4e)
+```
+
+---
+
+### Model_3.1 (feature engineering)
+
+Mael 
+
+```{r}
+data_train_mi %>%
+  gather(variable, value, -c(TARGET_WINS:TEAM_BATTING_1B)) %>%
+  ggplot(., aes(value, TARGET_WINS)) + 
+  geom_point(fill = "pink", color="pink") + 
+  geom_smooth(method = "lm", se = FALSE, color = "red") + 
+  facet_wrap(~variable, scales ="free", ncol = 4) +
+  labs(x = element_blank(), y = "Wins")
+```
+
+```{r}
+mi_m1 <- lm(TARGET_WINS ~ TEAM_BATTING_AB + TEAM_BATTING_AVG + TEAM_BATTING_OBP + TEAM_BATTING_SLG, data = data_train_mi)
+summary(mi_m1)
+```
+
+The standardized residual plots show quite a few points outside the -2,2 range, which might justify removing those observations.
+
+Residuals vs Fitted: while the line is not quite horizontal, the constant variance assumption seems met
+Normal Q-Q plot: normality assumption is met
+Root(Squared Residuals) vs Fitted Values:
+Residuals vs Leverage: a few points have standardized residuals outside the (-2,2) ranhe which might justify removing those observations.
+
+```{r}
+plot(mi_m1)
+```
+
+MI: tyring out predictions on this model
+
+```{r}
+# data_test_mi <- add_features(data_test)
+# data_test_mi <- add_advanced_bb_features(data_test_mi)
+# pred.w.plim <- predict(mi_m1, data_test_mi, interval = "prediction")
+# pred.w.clim <- predict(mi_m1, data_test_mi, interval = "confidence")
+```
+---
+
+
 ## Model selection 
 
-In order to select which model is the “best” we will test it against a test set. We will examine the difference between the predicted and actual values. Since the wins are in whole numbers and the predict function will generate floating point numbers, I will be rounding the results.
 
 
