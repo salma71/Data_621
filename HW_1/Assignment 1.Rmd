@@ -147,15 +147,13 @@ MI:
 
 ### Data Prep
 
-MI:
-- New variables: TEAM_BATTING_1B: TEAM_BATTING_H - SUM(TEAM_BATTING_i) where i = 2B,3B,HR
-- Transforms
+#### Data Transformations
 
 ```{r}
 # New variable: TEAM_BATTING_1B
 base_data <- select(data_train, -INDEX)
 mod_data <- base_data %>% mutate(TEAM_BATTING_1B = base_data$TEAM_BATTING_H - select(., TEAM_BATTING_2B:TEAM_BATTING_HR) %>% rowSums(na.rm = FALSE))
-mod_data
+head(mod_data)
 ```
 ```{r, warning=FALSE, message=FALSE, fig.height=15, fig.width=5}
 # Data Transformations
@@ -173,7 +171,7 @@ baserun_cs <- ggplot(data_transformed, aes(x=TEAM_BASERUN_CS)) +
 baserun_cs_tf <- ggplot(data_transformed, aes(x=TEAM_BASERUN_CS_tform)) + 
     geom_histogram(aes(y=..density..), colour="black", fill="red") +
     geom_density(alpha=.8, fill="pink") + 
-  theme_classic() + labs(title = "TEAM_BASERUN_CS Log Transformed")
+  theme_classic() + labs(title = "Log Transformed")
 
 #Log transform TEAM_BASERUN_SB
 data_transformed$TEAM_BASERUN_SB_tform <-log(data_transformed$TEAM_BASERUN_SB)
@@ -186,7 +184,7 @@ baserun_sb <- ggplot(data_transformed, aes(x=TEAM_BASERUN_SB)) +
 baserun_sb_tf <- ggplot(data_transformed, aes(x=TEAM_BASERUN_SB_tform)) + 
     geom_histogram(aes(y=..density..), colour="black", fill="red") +
     geom_density(alpha=.8, fill="pink") + 
-  theme_classic() + labs(title = "TEAM_BASERUN_SB Log Transformed")
+  theme_classic() + labs(title = "Log Transformed")
 
 
 #Log transform TEAM_BATTING_3B
@@ -200,7 +198,7 @@ batting_3b <- ggplot(data_transformed, aes(x=TEAM_BATTING_3B)) +
 batting_3b_tf <- ggplot(data_transformed, aes(x=TEAM_BATTING_3B_tform)) + 
     geom_histogram(aes(y=..density..), colour="black", fill="red") +
     geom_density(alpha=.8, fill="pink") + 
-  theme_classic() + labs(title = "TEAM_BATTING_3B Log Transformed")
+  theme_classic() + labs(title = "Log Transformed")
 
 #BoxCoxtransform TEAM_BATTING_BB
 data_transformed$TEAM_BATTING_BB_tform <- BoxCox(data_transformed$TEAM_BATTING_BB, BoxCoxLambda(data_transformed$TEAM_BATTING_BB))
@@ -213,7 +211,7 @@ batting_bb <- ggplot(data_transformed, aes(x=TEAM_BATTING_BB)) +
 batting_bb_tf <- ggplot(data_transformed, aes(x=TEAM_BATTING_BB_tform)) + 
     geom_histogram(aes(y=..density..), colour="black", fill="red") +
     geom_density(alpha=.8, fill="pink") + 
-  theme_classic() + labs(title = "TEAM_BATTING_BB BoxCox Transformed")
+  theme_classic() + labs(title = "BoxCox Transformed")
 
 
 #BoxCoxtransform TEAM_BATTING_H
@@ -227,7 +225,7 @@ batting_h <- ggplot(data_transformed, aes(x=TEAM_BATTING_H)) +
 batting_h_tf <- ggplot(data_transformed, aes(x=TEAM_BATTING_H_tform)) + 
     geom_histogram(aes(y=..density..), colour="black", fill="red") +
     geom_density(alpha=.8, fill="pink") + 
-  theme_classic() + labs(title = "TEAM_BATTING_H BoxCox Transformed")
+  theme_classic() + labs(title = "BoxCox Transformed")
 
 #BoxCoxtransform TEAM_BATTING_1B
 data_transformed$TEAM_BATTING_1B_tform <- BoxCox(data_transformed$TEAM_BATTING_1B, BoxCoxLambda(data_transformed$TEAM_BATTING_1B))
@@ -240,7 +238,7 @@ batting_1b <- ggplot(data_transformed, aes(x=TEAM_BATTING_1B)) +
 batting_1b_tf <- ggplot(data_transformed, aes(x=TEAM_BATTING_1B_tform)) + 
     geom_histogram(aes(y=..density..), colour="black", fill="red") +
     geom_density(alpha=.8, fill="pink") + 
-  theme_classic() + labs(title = "TEAM_BATTING_1B BoxCox Transformed")
+  theme_classic() + labs(title = "BoxCox Transformed")
 
 
 #BoxCoxtransform TEAM_FIELDING_E
@@ -254,7 +252,7 @@ fielding_e <- ggplot(data_transformed, aes(x=TEAM_FIELDING_E)) +
 fielding_e_tf <- ggplot(data_transformed, aes(x=TEAM_FIELDING_E_tform)) + 
     geom_histogram(aes(y=..density..), colour="black", fill="red") +
     geom_density(alpha=.8, fill="pink") + 
-  theme_classic() + labs(title = "TEAM_FIELDING_E BoxCox Transformed")
+  theme_classic() + labs(title = "BoxCox Transformed")
 
 
 #Log transform TEAM_PITCHING_BB
@@ -268,7 +266,7 @@ pitching_bb <- ggplot(data_transformed, aes(x=TEAM_PITCHING_BB)) +
 pitching_bb_tf <- ggplot(data_transformed, aes(x=TEAM_PITCHING_BB_tform)) + 
     geom_histogram(aes(y=..density..), colour="black", fill="red") +
     geom_density(alpha=.8, fill="pink") + 
-  theme_classic() + labs(title = "TEAM_PITCHING_BB Log Transformed")
+  theme_classic() + labs(title = "Log Transformed")
 
 
 #BoxCoxtransform TEAM_PITCHING_H
@@ -282,7 +280,7 @@ pitching_h <- ggplot(data_transformed, aes(x=TEAM_PITCHING_H)) +
 pitching_h_tf <- ggplot(data_transformed, aes(x=TEAM_PITCHING_H_tform)) + 
     geom_histogram(aes(y=..density..), colour="black", fill="red") +
     geom_density(alpha=.8, fill="pink") + 
-  theme_classic() + labs(title = "TEAM_PITCHING_H BoxCox Transformed")
+  theme_classic() + labs(title = "BoxCox Transformed")
 
 
 #Log transform TEAM_PITCHING_SO
@@ -296,7 +294,7 @@ pitching_so <- ggplot(data_transformed, aes(x=TEAM_PITCHING_SO)) +
 pitching_so_tf <- ggplot(data_transformed, aes(x=TEAM_PITCHING_SO_tform)) + 
     geom_histogram(aes(y=..density..), colour="black", fill="red") +
     geom_density(alpha=.8, fill="pink") + 
-  theme_classic() + labs(title = "TEAM_PITCHING_SO")
+  theme_classic() + labs(title = "Log Transformed")
 
 plot_grid(baserun_cs, baserun_cs_tf, baserun_sb, baserun_sb_tf,
           batting_3b, batting_3b_tf, batting_bb, batting_bb_tf,
@@ -311,40 +309,40 @@ plot_grid(baserun_cs, baserun_cs_tf, baserun_sb, baserun_sb_tf,
 ### Build Models
 
 
-```{r}
-#data with all original variables
-m1_data <- mod_data %>% select(-TEAM_BATTING_1B)
+<!-- ```{r} -->
+<!-- #data with all original variables -->
+<!-- m1_data <- mod_data %>% select(-TEAM_BATTING_1B) -->
 
-m1 <- lm(TARGET_WINS ~., data = m1_data)
-summary(m1)
-plot(m1)
+<!-- m1 <- lm(TARGET_WINS ~., data = m1_data) -->
+<!-- summary(m1) -->
+<!-- plot(m1) -->
 
-#Issue: only 2 significant variables (fielding variables)
-```
-
-
-```{r}
-#data without TEAM_BATTING_HBP, TEAM_BASERUN_CS, and TEAM_FIELDING_DP
-m2_data <- mod_data %>% select(-TEAM_BATTING_HBP, -TEAM_BASERUN_CS, -TEAM_FIELDING_DP)
-
-m2 <- lm(TARGET_WINS ~., data = m2_data)
-summary(m2)
-plot(m2)
+<!-- #Issue: only 2 significant variables (fielding variables) -->
+<!-- ``` -->
 
 
+<!-- ```{r} -->
+<!-- #data without TEAM_BATTING_HBP, TEAM_BASERUN_CS, and TEAM_FIELDING_DP -->
+<!-- m2_data <- mod_data %>% select(-TEAM_BATTING_HBP, -TEAM_BASERUN_CS, -TEAM_FIELDING_DP) -->
 
-```
-
-```{r}
-#data without TEAM_BATTING_HBP, TEAM_BASERUN_CS, and TEAM_FIELDING_DP
-m3_data <- mod_data %>% select(-TEAM_BATTING_HBP, -TEAM_BASERUN_CS, -TEAM_FIELDING_DP, -TEAM_BATTING_H)
-
-m3 <- lm(TARGET_WINS ~., data = m3_data)
-summary(m3)
-plot(m3)
+<!-- m2 <- lm(TARGET_WINS ~., data = m2_data) -->
+<!-- summary(m2) -->
+<!-- plot(m2) -->
 
 
-```
+
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- #data without TEAM_BATTING_HBP, TEAM_BASERUN_CS, and TEAM_FIELDING_DP -->
+<!-- m3_data <- mod_data %>% select(-TEAM_BATTING_HBP, -TEAM_BASERUN_CS, -TEAM_FIELDING_DP, -TEAM_BATTING_H) -->
+
+<!-- m3 <- lm(TARGET_WINS ~., data = m3_data) -->
+<!-- summary(m3) -->
+<!-- plot(m3) -->
+
+
+<!-- ``` -->
 
 
 ```{r}
@@ -353,7 +351,23 @@ m4_data <- select(data_transformed,-TEAM_BASERUN_CS, -TEAM_BASERUN_SB, -TEAM_BAT
 
 m4 <- lm(TARGET_WINS ~., data = m4_data)
 summary(m4)
-plot(m4)
+
+m4a <- update(m4, . ~ . -TEAM_PITCHING_HR)
+summary(m4a)
+
+m4b <- update(m4a, . ~ . -TEAM_BATTING_1B_tform)
+summary(m4b)
+
+m4c <- update(m4b, . ~ . -TEAM_PITCHING_BB_tform)
+summary(m4c)
+
+m4d <- update(m4c, . ~ . -TEAM_PITCHING_SO_tform)
+summary(m4d)
+
+m4e <- update(m4d, . ~ . -TEAM_PITCHING_H_tform)
+summary(m4e)
+plot(m4e)
+
 
 
 ```
