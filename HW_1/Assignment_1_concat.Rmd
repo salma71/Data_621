@@ -44,7 +44,7 @@ data_train <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/maste
 
 ## Data Exploration {.tabset .tabset-fade .tabset-pills}
 
-### Data exploration
+### Data Exploration
 
 ```{r data_dimension_train, message=FALSE, warning=FALSE}
 dim(data_train)
@@ -69,7 +69,7 @@ skim(data_test)
 
 ---
 
-### Explore missing variables
+### Missing Data
 
 ```{r explore_missing_data_train, message=FALSE, warning=FALSE}
 data_train %>% 
@@ -115,6 +115,8 @@ data_train %>%
   geom_density(fill='pink') + 
   facet_wrap(~key, scales = 'free')
 ```
+
+MI: I think we should remove the SO histogram below. The TARGET_WINS plot is also shown above.
 
 Let's take a closer look at the `TEAM_BASERUN_SB` 
 
@@ -233,6 +235,13 @@ data_test[impute_me,"TEAM_FIELDING_DP"] <- knn[impute_me,"TEAM_FIELDING_DP"]
 sum(is.na(data_test))/prod(dim(data_test))
 ```
 
+MI: this passage is just for reference when dealing with leverage point. Can be removed later
+
+Outliers & Leverage Points
+
+In summary, an outlier is a point whose standardized residual falls outside the interval from –2 to 2. Recall that a bad leverage point is a leverage point which is also an outlier. Thus, a bad leverage point is a leverage point whose standar- dized residual falls outside the interval from –2 to 2. On the other hand, a good leverage point is a leverage point whose standardized residual falls inside the interval from –2 to 2.
+
+Recall that the rule for simple linear regression for classifying a point as a leverage point is hii > 4/n . 
 
 ---
 
@@ -414,38 +423,17 @@ test_data_transformed$TEAM_PITCHING_SO_tform <-log(test_data_transformed$TEAM_PI
 
 ### Feature engineering 
 
-MI: this passage is just for reference when dealing with leverage point. Can be removed later
-Outliers & Leverage Points
-
-In summary, an outlier is a point whose standardized residual falls outside the interval from –2 to 2. Recall that a bad leverage point is a leverage point which is also an outlier. Thus, a bad leverage point is a leverage point whose standar- dized residual falls outside the interval from –2 to 2. On the other hand, a good leverage point is a leverage point whose standardized residual falls inside the interval from –2 to 2.
-
-Recall that the rule for simple linear regression for classifying a point as a leverage point is hii > 4/n . 
-
+Research into baseball statistics suggests the use of the following engineered variables which are composites of variables from the base dataset. These variables, namely "at bats", "batting average", "on base percentage" and "slugging percentage' provide more insight into a team's batting performance by providing variables quantifying the number of opportunities of hitting the ball, the number of times the ball was actually hit, and when hit, how many bases the batter was able to reach. All these variables are representations of a team's ability to score points. (Maybe discuss variables that we expect to benefit the opposing team).
 
 ```{r}
-temp_holder <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-training-data.csv", header = TRUE) %>% select(-INDEX)
-
-add_features <- function(df){
-  df %>%
-    mutate(TEAM_BATTING_1B = TEAM_BATTING_H - TEAM_BATTING_2B - TEAM_BATTING_3B - TEAM_BATTING_HR)
-}
-
-data_train_mi <- add_features(temp_holder)
+# Creating "singles by batters"
 # Creating "at bats" variable representing every time a batter steps up to bat
-data_train_mi <- data_train_mi %>% mutate(TEAM_BATTING_AB = TEAM_BATTING_H + TEAM_BATTING_BB + TEAM_BATTING_HBP + TEAM_BATTING_SO)
 # Creating "batting average" variable
-data_train_mi <- data_train_mi %>% mutate(TEAM_BATTING_AVG = TEAM_BATTING_H/TEAM_BATTING_AB)
 # Creating "on base percentage" representing the proportion of ways to get a base out of total opportunities to hit the ball
-data_train_mi <- data_train_mi %>% mutate(TEAM_BATTING_OBP = (TEAM_BATTING_H + TEAM_BATTING_BB + TEAM_BATTING_HBP)/(TEAM_BATTING_AB + TEAM_BATTING_BB + TEAM_BATTING_HBP))
 # Creating "slugging percentage" which is a weighted sum of hits by number of bases acquired divided by opportunities to hit the ball
-data_train_mi <- data_train_mi %>% mutate(TEAM_BATTING_SLG = (TEAM_BATTING_1B + 2*TEAM_BATTING_2B + 3*TEAM_BATTING_3B + 3*TEAM_BATTING_HR)/TEAM_BATTING_AB)
-```
-
-Encapsulating the at above into a function. (Use only one of these in final report). Function makes more sense for re-use in prediction
-
-```{r}
 add_advanced_bb_features <- function(df) {
-  df %>% 
+  df %>%
+    mutate(TEAM_BATTING_1B = TEAM_BATTING_H - TEAM_BATTING_2B - TEAM_BATTING_3B - TEAM_BATTING_HR) %>% 
     mutate(TEAM_BATTING_AB = TEAM_BATTING_H + TEAM_BATTING_BB + TEAM_BATTING_HBP + TEAM_BATTING_SO) %>%
     mutate(TEAM_BATTING_AVG = TEAM_BATTING_H/TEAM_BATTING_AB) %>%
     mutate(TEAM_BATTING_OBP = (TEAM_BATTING_H + TEAM_BATTING_BB + TEAM_BATTING_HBP)/(TEAM_BATTING_AB + TEAM_BATTING_BB + TEAM_BATTING_HBP)) %>%
@@ -453,12 +441,31 @@ add_advanced_bb_features <- function(df) {
 }
 ```
 
+Given the presence of TEAM_BATTING_HBP in the computation of TEAM_BATTING_OBP, we need to impute the missing values, in this case with the mean of the variable. 
+
 ```{r}
+raw_training_data <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-training-data.csv", header = TRUE) %>% select(-INDEX)
+data_train_mi <- raw_training_data
+mean_hbp <- round(median(data_train_mi$TEAM_BATTING_HBP, na.rm = TRUE),0)
+data_train_mi[is.na(data_train_mi[,"TEAM_BATTING_HBP"]), "TEAM_BATTING_HBP"] <- mean_hbp
+```
+
+```{r}
+data_train_mi <- add_advanced_bb_features(data_train_mi)
 data_train_mi
 ```
 
-MI: Too many values are removed. These engineered features rely on TEAM_BATTING_HBP in the calculations but this is the variable with the most missing data. Treatment of this variable will affect downstream results.
 
+
+```{r message=FALSE, warning=FALSE, fig.height=4, fig.width=6}
+data_train_mi %>%
+  gather(variable, value, -c(TARGET_WINS:TEAM_BATTING_1B)) %>%
+  ggplot(., aes(value, TARGET_WINS)) + 
+  geom_point(fill = "pink", color="pink") + 
+  geom_smooth(method = "lm", se = FALSE, color = "red") + 
+  facet_wrap(~variable, scales ="free", nrow = 4) +
+  labs(x = element_blank(), y = "Wins")
+```
 
 ---
 
@@ -556,19 +563,10 @@ plot(m4e)
 
 ---
 
-### Model_3.1 (feature engineering)
+### Model_3.1 (Feature Engineering)
 
 Mael 
 
-```{r}
-data_train_mi %>%
-  gather(variable, value, -c(TARGET_WINS:TEAM_BATTING_1B)) %>%
-  ggplot(., aes(value, TARGET_WINS)) + 
-  geom_point(fill = "pink", color="pink") + 
-  geom_smooth(method = "lm", se = FALSE, color = "red") + 
-  facet_wrap(~variable, scales ="free", ncol = 4) +
-  labs(x = element_blank(), y = "Wins")
-```
 
 ```{r}
 mi_m1 <- lm(TARGET_WINS ~ TEAM_BATTING_AB + TEAM_BATTING_AVG + TEAM_BATTING_OBP + TEAM_BATTING_SLG, data = data_train_mi)
@@ -589,7 +587,6 @@ plot(mi_m1)
 MI: tyring out predictions on this model
 
 ```{r}
-# data_test_mi <- add_features(data_test)
 # data_test_mi <- add_advanced_bb_features(data_test_mi)
 # pred.w.plim <- predict(mi_m1, data_test_mi, interval = "prediction")
 # pred.w.clim <- predict(mi_m1, data_test_mi, interval = "confidence")
