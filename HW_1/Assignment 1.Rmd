@@ -305,6 +305,45 @@ plot_grid(baserun_cs, baserun_cs_tf, baserun_sb, baserun_sb_tf,
 
 ```
 
+```{r}
+#Test data transformations to match model
+
+mod_data_test <- data_test %>% mutate(TEAM_BATTING_1B = TEAM_BATTING_H - select(., TEAM_BATTING_2B:TEAM_BATTING_HR) %>% rowSums(na.rm = FALSE))
+
+test_data_transformed <- mod_data_test
+
+#Log transform TEAM_BASERUN_CS
+test_data_transformed$TEAM_BASERUN_CS_tform <-log(test_data_transformed$TEAM_BASERUN_CS)
+
+#Log transform TEAM_BASERUN_SB
+test_data_transformed$TEAM_BASERUN_SB_tform <-log(test_data_transformed$TEAM_BASERUN_SB)
+
+#Log transform TEAM_BATTING_3B
+test_data_transformed$TEAM_BATTING_3B_tform <-log(test_data_transformed$TEAM_BATTING_3B)
+
+#BoxCoxtransform TEAM_BATTING_BB
+test_data_transformed$TEAM_BATTING_BB_tform <- BoxCox(test_data_transformed$TEAM_BATTING_BB, BoxCoxLambda(test_data_transformed$TEAM_BATTING_BB))
+
+#BoxCoxtransform TEAM_BATTING_H
+test_data_transformed$TEAM_BATTING_H_tform <- BoxCox(test_data_transformed$TEAM_BATTING_H, BoxCoxLambda(test_data_transformed$TEAM_BATTING_H))
+
+#BoxCoxtransform TEAM_BATTING_1B
+test_data_transformed$TEAM_BATTING_1B_tform <- BoxCox(test_data_transformed$TEAM_BATTING_1B, BoxCoxLambda(test_data_transformed$TEAM_BATTING_1B))
+
+#BoxCoxtransform TEAM_FIELDING_E
+test_data_transformed$TEAM_FIELDING_E_tform <- BoxCox(test_data_transformed$TEAM_FIELDING_E, BoxCoxLambda(test_data_transformed$TEAM_FIELDING_E))
+
+#Log transform TEAM_PITCHING_BB
+test_data_transformed$TEAM_PITCHING_BB_tform <-log(test_data_transformed$TEAM_PITCHING_BB)
+
+#BoxCoxtransform TEAM_PITCHING_H
+test_data_transformed$TEAM_PITCHING_H_tform <- BoxCox(test_data_transformed$TEAM_PITCHING_H, BoxCoxLambda(test_data_transformed$TEAM_PITCHING_H))
+
+#Log transform TEAM_PITCHING_SO
+test_data_transformed$TEAM_PITCHING_SO_tform <-log(test_data_transformed$TEAM_PITCHING_SO)
+
+```
+
 
 ### Build Models
 
