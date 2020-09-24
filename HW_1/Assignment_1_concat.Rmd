@@ -1,5 +1,5 @@
 ---
-title: "Data 621 - Homework_1"
+title: "Data 621 - Homework 1"
 author: "Dhairav Chhatbar, Mael Illien, Salma Elshahawy"
 date: "9/9/2020"
 output: 
@@ -18,6 +18,8 @@ output:
 
 ## Introduction 
 
+A wealth of statistics are collected in sports, and baseball is no exception. The exploration and modeling that follows is based on a "Moneyball" dataset where the response variable is the number of wins for a given team for a particular season.
+
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
 library(skimr)
@@ -33,22 +35,22 @@ library(DescTools)
 library(cowplot)
 ```
 
-
-
 ```{r message=FALSE, warning=FALSE}
 data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-evaluation-data.csv", header = TRUE) %>%select(-INDEX)
 data_train <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-training-data.csv", header = TRUE) %>% select(-INDEX)
 ```
 
-
-
 ## Data Exploration {.tabset .tabset-fade .tabset-pills}
 
 ### Data Exploration
 
+The dataset is composed of 2276 observations ranging from 1871 to 2006. Sixteen variables were used to record the various pitching, batting and fielding efforts for the teams. These are listed below.
+
 ```{r data_dimension_train, message=FALSE, warning=FALSE}
 dim(data_train)
 ```
+
+MI: do we even need to describe the test set?
 
 ```{r data_dimension_test, message=FALSE, warning=FALSE}
 dim(data_test)
@@ -70,6 +72,8 @@ skim(data_test)
 ---
 
 ### Missing Data
+
+The dataset, while mostly complete, is missing a significant number of observations for some of the varibales, namely batters hit by pitchers (HBP) and runners caught stealing bases (CS). We recognize that these are relatively rare occurences in typical baseball games. Nevertheless, the treatment of the missing data depends on the particular model being evaluated. Some models ignore these variables altgother, while other use these variables as a part of engineered features.
 
 ```{r explore_missing_data_train, message=FALSE, warning=FALSE}
 data_train %>% 
@@ -106,17 +110,19 @@ data_test %>%
 
 ---
 
-### Data Visualization
+### Visualization
+
+Visualizing the data reveals a variety of distributions. Some variables are approximiately normal, while other are bimodal or skewed and in some cases extremely skewed especially the variable related to pitching. This skew suggests special treatment of some variables in order to respect the underlying normality assumptions of the models that follow. 
 
 ```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 data_train %>% 
   gather() %>% 
-  ggplot( aes(x= value)) + 
+  ggplot(aes(x= value)) + 
   geom_density(fill='pink') + 
   facet_wrap(~key, scales = 'free')
 ```
 
-MI: I think we should remove the SO histogram below. The TARGET_WINS plot is also shown above.
+MI: I think we should remove the SO histogram below. The TARGET_WINS plot is also already shown above. Or maybe only give a blow up plot of the response variable. 
 
 Let's take a closer look at the `TEAM_BASERUN_SB` 
 
@@ -140,8 +146,14 @@ ggplot(data_train, aes(x=TARGET_WINS)) +
   theme_classic()
 ```
 
-Correlations with Response Variable
+#### Correlations with Response Variable
+
 Let’s take a look at how the predictors are correlated with the response variable:
+
+A visualization of correlation between the variables reveals both expected an unexpected observations:
+- Most puzzling is the very high correlation between the number of homeruns pitched and the number of homeruns batted. These variables are expected to be unrelated as one variable represents an advantage for the batting team, while the other is an advantage for the opposing team. 
+- The response variable "TARGET_WINS" is most highly correlated with "TEAM_BATTING_H" which is sensible as this represnts the number of base hits by batters. More hits would suggest more opportunities to run around the bases and make it home to score points.
+
 
 ```{r correlations_plot, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 q <- cor(data_train)
@@ -151,11 +163,7 @@ ggcorrplot(q, type = "upper", outline.color = "white",
            lab = TRUE, show.legend = FALSE, tl.cex = 8, lab_size = 3) 
 ```
 
-MI: 
-- TEAM_PITCHING_HR (homeruns pitched) is slightly correlated win the number of wins. This is clearly unexpected because pitched homeruns are a negative for the pitching team. 
-- TEAM_PITCHING_SO (strikeouts by pitcher) likely suffers from outliers because we'd expect strikeouts to be a positive thing for the pitching team. There is a large influential point.
-- TEAM_PITCHING_BB (walks allowed by pitcher) might suffer from outliers. We'd expected a negative correlation since a walk allowed is a negative for the pitching team.
-
+A scatterplot with simple linear regression lines displays the relationships along with the distribution of the data. These distributions provide indications of non-normality as well as the influence of outliers. These will be dealt with via variable transformation and deletion of individuals observations determined to be biasing the model. (MI: explore this a bit more)
 
 ```{r predictors_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 data_train %>%
@@ -172,6 +180,8 @@ data_train %>%
 ## Data Preparation {.tabset .tabset-fade .tabset-pills}
 
 ### Imputation using KNN
+
+As mentioned earlier, some variable have incomplete data. The following imputation schemes aim to fill in these data voids. 
 
 ```{r check_na_train_before, message=FALSE, warning=FALSE}
 sum(is.na(data_train))/prod(dim(data_train))
@@ -246,6 +256,8 @@ Recall that the rule for simple linear regression for classifying a point as a l
 ---
 
 ### Data Transformation 
+
+As seen on the scatterplots above, the spread of the data in some of the variables suggests that transformations might help in normalizing the variability of the data. Log transformations are used here for that purpose as seen on the comparative histograms below.
 
 ```{r create_new_var, message=FALSE, warning=FALSE}
 # New variable: TEAM_BATTING_1B
@@ -421,7 +433,7 @@ test_data_transformed$TEAM_PITCHING_SO_tform <-log(test_data_transformed$TEAM_PI
 ---
  
 
-### Feature engineering 
+### Feature Engineering 
 
 Research into baseball statistics suggests the use of the following engineered variables which are composites of variables from the base dataset. These variables, namely "at bats", "batting average", "on base percentage" and "slugging percentage' provide more insight into a team's batting performance by providing variables quantifying the number of opportunities of hitting the ball, the number of times the ball was actually hit, and when hit, how many bases the batter was able to reach. All these variables are representations of a team's ability to score points. (Maybe discuss variables that we expect to benefit the opposing team).
 
