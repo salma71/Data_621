@@ -257,7 +257,7 @@ Recall that the rule for simple linear regression for classifying a point as a l
 
 ### Data Transformation 
 
-As seen on the scatterplots above, the spread of the data in some of the variables suggests that transformations might help in normalizing the variability of the data. Log transformations are used here for that purpose as seen on the comparative histograms below.
+As seen on the scatterplots above, the spread of the data in some of the variables suggests that transformations might help in normalizing the variability of the data. Log and Box Cox transformations are used here for that purpose as seen on the comparative histograms below.
 
 ```{r create_new_var, message=FALSE, warning=FALSE}
 # New variable: TEAM_BATTING_1B
@@ -541,7 +541,11 @@ plot(step_back)
 ### Model_2.1 (using transformation)
 
 
-Using Transformation - Dhairav
+The 2nd model for consideration is a model consisting of the following variables that have been transformed via log base e or Box Cox methods: TEAM_BASERUN_SB, TEAM_BATTING_3B, TEAM_BATTING_BB, TEAM_BATTING_H, TEAM_FIELDING_E, TEAM_PITCHING_BB, TEAM_PITCHING_H, TEAM_PITCHING_SO, TEAM_BATTING_1B.  
+  
+  
+Variables with high percentage of missing values have been removed and not incorporated into this model: TEAM_BATTING_HBP, TEAM_BASERUN_CS. 
+
 ```{r model_with_trans, message=FALSE, warning=FALSE}
 #data with all transformed variables
 m4_data <- select(data_transformed,-TEAM_BASERUN_CS, -TEAM_BASERUN_SB, -TEAM_BATTING_3B, -TEAM_BATTING_BB, -TEAM_BATTING_H, -TEAM_FIELDING_E, -TEAM_PITCHING_BB, -TEAM_PITCHING_H, -TEAM_PITCHING_SO, -TEAM_BATTING_HBP, -TEAM_BASERUN_CS, -TEAM_BATTING_1B)
@@ -572,6 +576,11 @@ m4e <- update(m4d, . ~ . -TEAM_PITCHING_H_tform)
 summary(m4e)
 plot(m4e)
 ```
+  
+  
+After using backwards elimination to balance between a high adjusted R-Squared and the number of predictors, the model is able to explain approximately 40 of the variances in the training dataset. To diagnose and validate further, we see that the residuals are fairly normally distributed and do not exhibit nonconstant variance, and do not show any obvious pattern. The normal Q-Q plot shows a fairly linear and normal relationship of the ordered residuals. The standardized residuals show that how many standard deviations the residuals are away from the fitted regression line. We consider this dataset as a small to moderate (less than 1M+ observations) in size, and therefore consider any outliers outside of the interval of -2 and +2 on the standardized residual plot. The plot shows that all residuals are within the -2 and +2 intervals, and we can rule out any outliers for a bad leverage point. Additionally, looking at the Residual vs. Leverage plot, does not show any influential observations, as all are within dashed lines not even observed on the plot.  
+  
+Looking at the coefficients of this model it is contrary to see that TEAM_BATTING_2B is having a negative effect on the number of wins since theoretically there should be a positive impact on wins because this is an offensive statistic.  
 
 ---
 
