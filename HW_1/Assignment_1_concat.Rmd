@@ -18,7 +18,7 @@ output:
 
 ## Introduction 
 
-A wealth of statistics are collected in sports, and baseball is no exception. The exploration and modeling that follows is based on a "Moneyball" dataset where the response variable is the number of wins for a given team for a particular season.
+A wealth of statistics are collected in sports, and baseball is no exception. The exploration and modeling that follows is based on a "Moneyball" dataset where the response variable is the number of wins for a given team for a particular season. The aim of this report is to build models and identify the one that best explains the variability in the observed data in order to make predictiong on new, unseen data.
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
@@ -44,29 +44,21 @@ data_train <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/maste
 
 ### Data Exploration
 
-The dataset is composed of 2276 observations ranging from 1871 to 2006. Sixteen variables were used to record the various pitching, batting and fielding efforts for the teams. These are listed below.
+The dataset is composed of quantitative 2276 observations ranging from 1871 to 2006. Sixteen variables were used to record the various pitching, batting and fielding efforts for the teams. These are listed below.
 
 ```{r data_dimension_train, message=FALSE, warning=FALSE}
 dim(data_train)
 ```
-
-MI: do we even need to describe the test set?
-
-```{r data_dimension_test, message=FALSE, warning=FALSE}
-dim(data_test)
-``` 
 
 ```{r data_types, message=FALSE, warning=FALSE}
 # list types for each attribute
 sapply(data_train, class)
 ```
 
+
+
 ```{r data_summary_train, message=FALSE, warning=FALSE}
 skim(data_train)
-```
-
-```{r data_summary_test, message=FALSE, warning=FALSE}
-skim(data_test)
 ```
 
 ---
@@ -91,28 +83,11 @@ data_train %>%
   kable_styling()
 ```
 
-
-```{r explore_missing_data_test, message=FALSE, warning=FALSE}
-data_test %>% 
-  gather(variable, value) %>%
-  filter(is.na(value)) %>%
-  group_by(variable) %>%
-  tally() %>%
-  mutate(percent = n / nrow(data_train) * 100) %>%
-  mutate(percent = paste0(round(percent, ifelse(percent < 10, 1, 0)), "%")) %>%
-  arrange(desc(n)) %>%
-  rename(`Variable Missing Data` = variable,
-         `Number of Records` = n,
-         `Share of Total` = percent) %>%
-  kable() %>%
-  kable_styling()
-```
-
 ---
 
 ### Visualization
 
-Visualizing the data reveals a variety of distributions. Some variables are approximiately normal, while other are bimodal or skewed and in some cases extremely skewed especially the variable related to pitching. This skew suggests special treatment of some variables in order to respect the underlying normality assumptions of the models that follow. 
+Visualizing the data reveals a variety of distributions. Some variables are approximately normal, while other are bimodal or skewed and in some cases extremely skewed especially the variable related to pitching. This skew suggests special treatment of some variables in order to respect the underlying normality assumptions of the models that follow. 
 
 ```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 data_train %>% 
@@ -122,38 +97,28 @@ data_train %>%
   facet_wrap(~key, scales = 'free')
 ```
 
-MI: I think we should remove the SO histogram below. The TARGET_WINS plot is also already shown above. Or maybe only give a blow up plot of the response variable. 
-
-Let's take a closer look at the `TEAM_BASERUN_SB` 
+Taking a closer look at the `TARGET_WINS`, we find that the despite some skew to the left tail, the response variable has nearly coincident mean (80.8) and median values (82). This is valuable benchmark for a baseball team to compare its season record against.   
 
 ```{r explore_Baserunsb, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 data_train %>% 
-  ggplot(aes(TEAM_BASERUN_SB)) + 
-  geom_histogram(bins = 50, fill = 'pink') +
-  geom_vline(aes(xintercept = mean(TEAM_BASERUN_SB, na.rm = T)), col = "red", lty = 2) +
-  geom_vline(aes(xintercept = median(TEAM_BASERUN_SB, na.rm = T)), col = "blue", lty = 2) +
+  ggplot(aes(TARGET_WINS)) + 
+  geom_histogram(bins = 50, fill = 'pink', colour="black",) +
+  geom_vline(aes(xintercept = mean(TARGET_WINS, na.rm = T)), col = "red", lty = 2) +
+  geom_vline(aes(xintercept = median(TARGET_WINS, na.rm = T)), col = "blue", lty = 2) +
   labs(x = element_blank(),
        y = "Count",
-       title = "Distribution of Stolen Bases",
+       title = "Distribution of Wins",
        caption = "* Red line is the mean value and blue is the median") + 
-  theme_classic()
-```
-
-```{r dependent_var_distribution, fig.height=4, fig.width=6, message=FALSE, warning=FALSE}
-ggplot(data_train, aes(x=TARGET_WINS)) + 
-    geom_histogram(aes(y=..density..),binwidth = 3, colour="black", fill="red") +
-    geom_density(alpha=.8, fill="pink") + 
   theme_classic()
 ```
 
 #### Correlations with Response Variable
 
-Let’s take a look at how the predictors are correlated with the response variable:
-
 A visualization of correlation between the variables reveals both expected an unexpected observations:
-- Most puzzling is the very high correlation between the number of homeruns pitched and the number of homeruns batted. These variables are expected to be unrelated as one variable represents an advantage for the batting team, while the other is an advantage for the opposing team. 
-- The response variable "TARGET_WINS" is most highly correlated with "TEAM_BATTING_H" which is sensible as this represnts the number of base hits by batters. More hits would suggest more opportunities to run around the bases and make it home to score points.
 
+1. Most puzzling is the very high correlation between the number of homeruns pitched and the number of homeruns batted. These variables are expected to be unrelated as one variable represents an advantage for the batting team, while the other is an advantage for the opposing team. 
+2. The response variable "TARGET_WINS" is most highly correlated with "TEAM_BATTING_H" which is sensible as this represnts the number of base hits by batters. More hits would suggest more opportunities to run around the bases and make it home to score points.
+3. While these correlations to the target variable are fairly weak, it is interesting that batting homeruns or triples is less correlated to a win that batting doubles. This could be simply be due to the fact that homeruns and triples occur less frequently, and when then they do occur and the bases might not be loaded. This means that a team might incrementally benefits less from a few great hits of the ball comapred to more frequent "lesser" hits.
 
 ```{r correlations_plot, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 q <- cor(data_train)
@@ -181,7 +146,7 @@ data_train %>%
 
 ### Imputation using KNN
 
-As mentioned earlier, some variable have incomplete data. The following imputation schemes aim to fill in these data voids. 
+As mentioned earlier, some variable have incomplete data. The following imputation schemes aim to fill in these data voids. The imputation scheme used on the training data must be applied to the testing data as well in order to maintain a consistent data processing pipeline. 
 
 ```{r check_na_train_before, message=FALSE, warning=FALSE}
 sum(is.na(data_train))/prod(dim(data_train))
@@ -257,7 +222,7 @@ Recall that the rule for simple linear regression for classifying a point as a l
 
 ### Data Transformation 
 
-As seen on the scatterplots above, the spread of the data in some of the variables suggests that transformations might help in normalizing the variability of the data. Log and Box Cox transformations are used here for that purpose as seen on the comparative histograms below.
+As seen on the scatterplots above, the spread of the data in some of the variables suggests that transformations might help in normalizing the variability of the data. Log and Box Cox transformations are used here for that purpose as seen on the comparative histograms below. Note that prior to the transformations, the variable `TEAM_BATTING_1B` is created from the other variables as it is believed that singles are the most frequent hits and will have predicting power.
 
 ```{r create_new_var, message=FALSE, warning=FALSE}
 # New variable: TEAM_BATTING_1B
@@ -432,7 +397,6 @@ test_data_transformed$TEAM_PITCHING_SO_tform <-log(test_data_transformed$TEAM_PI
 
 ---
  
-
 ### Feature Engineering 
 
 Research into baseball statistics suggests the use of the following engineered variables which are composites of variables from the base dataset. These variables, namely "at bats", "batting average", "on base percentage" and "slugging percentage' provide more insight into a team's batting performance by providing variables quantifying the number of opportunities of hitting the ball, the number of times the ball was actually hit, and when hit, how many bases the batter was able to reach. All these variables are representations of a team's ability to score points. (Maybe discuss variables that we expect to benefit the opposing team).
@@ -453,7 +417,7 @@ add_advanced_bb_features <- function(df) {
 }
 ```
 
-Given the presence of TEAM_BATTING_HBP in the computation of TEAM_BATTING_OBP, we need to impute the missing values, in this case with the mean of the variable. 
+Given the presence of TEAM_BATTING_HBP in the computation of TEAM_BATTING_OBP, we need to impute the missing values, in this case with the mean of the variable which is believe to be a reasonable estimate. 
 
 ```{r}
 raw_training_data <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_1/datasets/moneyball-training-data.csv", header = TRUE) %>% select(-INDEX)
@@ -467,9 +431,9 @@ data_train_mi <- add_advanced_bb_features(data_train_mi)
 data_train_mi
 ```
 
+The scatterplots below with simple linear regression lines reveal correlation with the target variable. The variable `TEAM_BATTING_AB` (at bats) has the strongest relationship indicating that bases acquired via batting or being hit by the pitcher leads to more wins. This is sensible. We would expect more from (MI: develop this)
 
-
-```{r message=FALSE, warning=FALSE, fig.height=4, fig.width=6}
+```{r message=FALSE, warning=FALSE, fig.height=10, fig.width=12}
 data_train_mi %>%
   gather(variable, value, -c(TARGET_WINS:TEAM_BATTING_1B)) %>%
   ggplot(., aes(value, TARGET_WINS)) + 
@@ -481,15 +445,14 @@ data_train_mi %>%
 
 ---
 
-
 ## Models Building {.tabset .tabset-fade .tabset-pills}
 
-### Model_1.1 (without transformation)
+### Model_1.1 (Full Model)
 
-Salma 
+The full model which uses all of the variables that were not missing the majority of the data reveals a number of features that are not statistically significant and do not add value in explaining the variability of the model. The adjusted R-squared value of 0.3242 will serve as a baseline for the comparison of other models.
 
 ```{r simple_model_building, message=FALSE, warning=FALSE}
-# simple model
+# full model
 m1 <- lm(TARGET_WINS ~., data = data_train, na.action = na.omit)
 
 summary(m1)
@@ -503,7 +466,9 @@ plot(m1)
 
 --- 
 
-### Model_1.2 (Backward elimination)
+### Model_1.2 (Backward Elimination)
+
+Via the process of backward elimination, we retain only the most statistically significant features. The percentage of variability explained by this reduced model is not increased (in fact slightly decreased). This suggests that the variable in their current form do not capture the majority of the picture. 
 
 ```{r message=FALSE, warning=FALSE}
 m2 <- lm(TARGET_WINS ~ TEAM_BATTING_H + TEAM_BATTING_HR +TEAM_BATTING_3B +TEAM_BASERUN_CS+TEAM_FIELDING_E+ TEAM_FIELDING_DP, data = data_train)
@@ -518,7 +483,7 @@ plot(m2)
 
 ---
 
-### Model_1.3 (polynomial regression)
+### Model_1.3 (Polynomial Regression)
 
 ```{r polynomial, message=FALSE, warning=FALSE}
 full_formula <- "TARGET_WINS ~ TEAM_BATTING_2B + TEAM_BATTING_3B + TEAM_BATTING_HR + TEAM_BATTING_BB + TEAM_BATTING_SO + TEAM_BASERUN_SB + TEAM_BASERUN_CS + TEAM_PITCHING_H + TEAM_PITCHING_HR + TEAM_PITCHING_BB + TEAM_PITCHING_SO + TEAM_FIELDING_E + TEAM_FIELDING_DP + I(TEAM_BATTING_2B^2) + I(TEAM_BATTING_3B^2) + I(TEAM_BATTING_HR^2) + I(TEAM_BATTING_BB^2) + I(TEAM_BATTING_SO^2) + I(TEAM_BASERUN_SB^2) + I(TEAM_BASERUN_CS^2) + I(TEAM_PITCHING_H^2) + I(TEAM_PITCHING_HR^2) + I(TEAM_PITCHING_BB^2) + I(TEAM_PITCHING_SO^2) + I(TEAM_FIELDING_E^2) + I(TEAM_FIELDING_DP^2)  + I(TEAM_BATTING_2B^3) + I(TEAM_BATTING_3B^3) + I(TEAM_BATTING_HR^3) + I(TEAM_BATTING_BB^3) + I(TEAM_BATTING_SO^3) + I(TEAM_BASERUN_SB^3) + I(TEAM_BASERUN_CS^3) + I(TEAM_PITCHING_H^3) + I(TEAM_PITCHING_HR^3) + I(TEAM_PITCHING_BB^3) + I(TEAM_PITCHING_SO^3) + I(TEAM_FIELDING_E^3) + I(TEAM_FIELDING_DP^3)  + I(TEAM_BATTING_2B^4) + I(TEAM_BATTING_3B^4) + I(TEAM_BATTING_HR^4) + I(TEAM_BATTING_BB^4) + I(TEAM_BATTING_SO^4) + I(TEAM_BASERUN_SB^4) + I(TEAM_BASERUN_CS^4) + I(TEAM_PITCHING_H^4) + I(TEAM_PITCHING_HR^4) + I(TEAM_PITCHING_BB^4) + I(TEAM_PITCHING_SO^4) + I(TEAM_FIELDING_E^4) + I(TEAM_FIELDING_DP^4) "
@@ -538,13 +503,12 @@ plot(step_back)
 
 ---
 
-### Model_2.1 (using transformation)
-
+### Model_2.1 (Transformations)
 
 The 2nd model for consideration is a model consisting of the following variables that have been transformed via log base e or Box Cox methods: TEAM_BASERUN_SB, TEAM_BATTING_3B, TEAM_BATTING_BB, TEAM_BATTING_H, TEAM_FIELDING_E, TEAM_PITCHING_BB, TEAM_PITCHING_H, TEAM_PITCHING_SO, TEAM_BATTING_1B.  
   
-  
 Variables with high percentage of missing values have been removed and not incorporated into this model: TEAM_BATTING_HBP, TEAM_BASERUN_CS. 
+
 
 ```{r model_with_trans, message=FALSE, warning=FALSE}
 #data with all transformed variables
@@ -557,11 +521,17 @@ m4 <- lm(TARGET_WINS ~., data = m4_data)
 summary(m4)
 ```
 
+```{r}
+plot(m4)
+```
+
 ---
 
-### Model_2.2 (Backward elimination)
+### Model_2.2 (Transformations with Backward elimination)
 
-Using Stepwise backward elimination
+Using backwards elimination to balance between a high adjusted R-Squared and the number of predictors, the model is able to explain approximately 40% of the variances in the training dataset. As such, this is one of the best and most parsimonious models and a good canditate for prediction on the test data. To diagnose and validate further, we see that the residuals are fairly normally distributed and do not exhibit nonconstant variance, and do not show any obvious pattern. The normal Q-Q plot shows a fairly linear and normal relationship of the ordered residuals. The standardized residuals show that how many standard deviations the residuals are away from the fitted regression line. We consider this dataset as a small to moderate (less than 1M+ observations) in size, and therefore consider any outliers outside of the interval of -2 and +2 on the standardized residual plot. The plot shows that all residuals are within the -2 and +2 intervals, and we can rule out any outliers for a bad leverage point. Additionally, looking at the Residual vs. Leverage plot, does not show any influential observations, as all are within dashed lines not even observed on the plot.  
+  
+Looking at the coefficients of this model it is contrary to see that TEAM_BATTING_2B is having a negative effect on the number of wins since theoretically there should be a positive impact on wins because this is an offensive statistic.  
 
 ```{r message=FALSE, warning=FALSE}
 m4a <- update(m4, . ~ . -TEAM_PITCHING_HR)
@@ -577,17 +547,12 @@ summary(m4e)
 plot(m4e)
 ```
   
-  
-After using backwards elimination to balance between a high adjusted R-Squared and the number of predictors, the model is able to explain approximately 40% of the variances in the training dataset. To diagnose and validate further, we see that the residuals are fairly normally distributed and do not exhibit nonconstant variance, and do not show any obvious pattern. The normal Q-Q plot shows a fairly linear and normal relationship of the ordered residuals. The standardized residuals show that how many standard deviations the residuals are away from the fitted regression line. We consider this dataset as a small to moderate (less than 1M+ observations) in size, and therefore consider any outliers outside of the interval of -2 and +2 on the standardized residual plot. The plot shows that all residuals are within the -2 and +2 intervals, and we can rule out any outliers for a bad leverage point. Additionally, looking at the Residual vs. Leverage plot, does not show any influential observations, as all are within dashed lines not even observed on the plot.  
-  
-Looking at the coefficients of this model it is contrary to see that TEAM_BATTING_2B is having a negative effect on the number of wins since theoretically there should be a positive impact on wins because this is an offensive statistic.  
 
 ---
 
 ### Model_3.1 (Feature Engineering)
 
-Mael 
-
+The model using engineered features, while parsimonious with statistically significant features, only explains about 21% of the data. This model relies heavily on the imputation scheme and as a result of the introduced bias, the normality assumption does not hold at the tail ends.
 
 ```{r}
 mi_m1 <- lm(TARGET_WINS ~ TEAM_BATTING_AB + TEAM_BATTING_AVG + TEAM_BATTING_OBP + TEAM_BATTING_SLG, data = data_train_mi)
@@ -605,7 +570,10 @@ Residuals vs Leverage: a few points have standardized residuals outside the (-2,
 plot(mi_m1)
 ```
 
-MI: tyring out predictions on this model
+
+## Model selection 
+
+MI: Best models are transformed stepwise and polynomial. Try those
 
 ```{r}
 # data_test_mi <- add_advanced_bb_features(data_test_mi)
@@ -613,9 +581,3 @@ MI: tyring out predictions on this model
 # pred.w.clim <- predict(mi_m1, data_test_mi, interval = "confidence")
 ```
 ---
-
-
-## Model selection 
-
-
-
