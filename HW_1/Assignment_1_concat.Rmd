@@ -55,6 +55,7 @@ dim(data_train)
 sapply(data_train, class)
 ```
 
+We used the `skim` library to generate a detailed summary statistics report of the variables.
 
 
 ```{r data_summary_train, message=FALSE, warning=FALSE}
@@ -205,6 +206,9 @@ impute_me <- is.na(data_test$TEAM_FIELDING_DP)
 data_test[impute_me,"TEAM_FIELDING_DP"] <- knn[impute_me,"TEAM_FIELDING_DP"]
 ```
 
+```{r}
+data_test
+```
 
 ```{r check_na_test_after, message=FALSE, warning=FALSE}
 sum(is.na(data_test))/prod(dim(data_test))
@@ -485,6 +489,9 @@ plot(m2)
 
 ### Model_1.3 (Polynomial Regression)
 
+For this model we will use a stepwise regression method using a backwards elimination process. We also introduce some higher order polynomial variables. 
+
+
 ```{r polynomial, message=FALSE, warning=FALSE}
 full_formula <- "TARGET_WINS ~ TEAM_BATTING_2B + TEAM_BATTING_3B + TEAM_BATTING_HR + TEAM_BATTING_BB + TEAM_BATTING_SO + TEAM_BASERUN_SB + TEAM_BASERUN_CS + TEAM_PITCHING_H + TEAM_PITCHING_HR + TEAM_PITCHING_BB + TEAM_PITCHING_SO + TEAM_FIELDING_E + TEAM_FIELDING_DP + I(TEAM_BATTING_2B^2) + I(TEAM_BATTING_3B^2) + I(TEAM_BATTING_HR^2) + I(TEAM_BATTING_BB^2) + I(TEAM_BATTING_SO^2) + I(TEAM_BASERUN_SB^2) + I(TEAM_BASERUN_CS^2) + I(TEAM_PITCHING_H^2) + I(TEAM_PITCHING_HR^2) + I(TEAM_PITCHING_BB^2) + I(TEAM_PITCHING_SO^2) + I(TEAM_FIELDING_E^2) + I(TEAM_FIELDING_DP^2)  + I(TEAM_BATTING_2B^3) + I(TEAM_BATTING_3B^3) + I(TEAM_BATTING_HR^3) + I(TEAM_BATTING_BB^3) + I(TEAM_BATTING_SO^3) + I(TEAM_BASERUN_SB^3) + I(TEAM_BASERUN_CS^3) + I(TEAM_PITCHING_H^3) + I(TEAM_PITCHING_HR^3) + I(TEAM_PITCHING_BB^3) + I(TEAM_PITCHING_SO^3) + I(TEAM_FIELDING_E^3) + I(TEAM_FIELDING_DP^3)  + I(TEAM_BATTING_2B^4) + I(TEAM_BATTING_3B^4) + I(TEAM_BATTING_HR^4) + I(TEAM_BATTING_BB^4) + I(TEAM_BATTING_SO^4) + I(TEAM_BASERUN_SB^4) + I(TEAM_BASERUN_CS^4) + I(TEAM_PITCHING_H^4) + I(TEAM_PITCHING_HR^4) + I(TEAM_PITCHING_BB^4) + I(TEAM_PITCHING_SO^4) + I(TEAM_FIELDING_E^4) + I(TEAM_FIELDING_DP^4) "
 
@@ -573,11 +580,20 @@ plot(mi_m1)
 
 ## Model selection 
 
-MI: Best models are transformed stepwise and polynomial. Try those
+In this step, we decided to go for the model with the highest r-squared to test against. In this case the model `step_back` has R-squared value of 0.4. We applied the predict method to predict number of wins then round the output for readability. Finally, we persisted the generated predictions on desk.
+
 
 ```{r}
-# data_test_mi <- add_advanced_bb_features(data_test_mi)
-# pred.w.plim <- predict(mi_m1, data_test_mi, interval = "prediction")
-# pred.w.clim <- predict(mi_m1, data_test_mi, interval = "confidence")
+data_test$TARGET_WINS <- round(predict(step_back, data_test), 0)
 ```
+
+```{r}
+data_test
+```
+
+```{r}
+write.csv(data_test, "predictions.csv", row.names = F)
+```
+
+
 ---
