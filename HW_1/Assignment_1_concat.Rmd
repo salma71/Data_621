@@ -25,8 +25,7 @@ knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
 library(skimr)
 library(ggplot2)
 library(ggcorrplot)
-library(dplyr)
-library(tidyr)
+library(tidyverse)
 library(PerformanceAnalytics)
 library(DMwR)
 library(caret)
@@ -534,7 +533,7 @@ plot(m4)
 
 ---
 
-### Model_2.2 (Transformations with Backward elimination)
+### Model_2.2 (Transformations with Backward Elimination)
 
 Using backwards elimination to balance between a high adjusted R-Squared and the number of predictors, the model is able to explain approximately 40% of the variances in the training dataset. As such, this is one of the best and most parsimonious models and a good canditate for prediction on the test data. To diagnose and validate further, we see that the residuals are fairly normally distributed and do not exhibit nonconstant variance, and do not show any obvious pattern. The normal Q-Q plot shows a fairly linear and normal relationship of the ordered residuals. The standardized residuals show that how many standard deviations the residuals are away from the fitted regression line. We consider this dataset as a small to moderate (less than 1M+ observations) in size, and therefore consider any outliers outside of the interval of -2 and +2 on the standardized residual plot. The plot shows that all residuals are within the -2 and +2 intervals, and we can rule out any outliers for a bad leverage point. Additionally, looking at the Residual vs. Leverage plot, does not show any influential observations, as all are within dashed lines not even observed on the plot.  
   
@@ -574,26 +573,40 @@ Root(Squared Residuals) vs Fitted Values:
 Residuals vs Leverage: a few points have standardized residuals outside the (-2,2) ranhe which might justify removing those observations.
 
 ```{r}
+par(mfrow = c(2, 2))
 plot(mi_m1)
 ```
 
+### Model_3.2 (Feature Engineering & Influence)
 
-## Model selection 
+By examining Cook's distance, we find 130 obsevrations that are influencial points with have large leverage. However, we find that removing these points affects the coefficients slightly but does little to improve the model as the r-squared value decreased futher to 0.2075. 
 
-In this step, we decided to go for the model with the highest r-squared to test against. In this case the model `step_back` has R-squared value of 0.4. We applied the predict method to predict number of wins then round the output for readability. Finally, we persisted the generated predictions on desk.
+```{r}
+mi_m1_cd <- cooks.distance(mi_m1)
+mi_m1_large_cd <- mi_m1_cd > 4 / length(mi_m1_cd)
+sum(mi_m1_cd > 4 / length(mi_m1_cd))
+```
 
+```{r}
+mi_m1_formula <- "TARGET_WINS ~ TEAM_BATTING_AB + TEAM_BATTING_AVG + TEAM_BATTING_OBP + TEAM_BATTING_SLG"
+mi_m2 <- lm(mi_m1_formula, data = data_train_mi, subset = mi_m1_cd < 4 / length(mi_m1_cd))
+summary(mi_m2)
+```
+
+## Model Selection 
+
+In this step, we decided to go for the model with the highest r-squared to test against. In this case the model `step_back` has R-squared value of 0.4. We applied the predict method to predict number of wins then round the output for readability. Finally, we record the generated predictions on disk.
 
 ```{r}
 data_test$TARGET_WINS <- round(predict(step_back, data_test), 0)
 ```
 
 ```{r}
-data_test
+data_test %>% select(TARGET_WINS, everything())
 ```
 
 ```{r}
 write.csv(data_test, "predictions.csv", row.names = F)
 ```
-
 
 ---
