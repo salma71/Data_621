@@ -18,7 +18,7 @@ output:
 
 ## Introduction 
 
-A wealth of statistics are collected in sports, and baseball is no exception. The exploration and modeling that follows is based on a "Moneyball" dataset where the response variable is the number of wins for a given team for a particular season. The aim of this report is to build models and identify the one that best explains the variability in the observed data in order to make predictiong on new, unseen data.
+A wealth of statistics are collected in sports, and baseball is no exception. The exploration and modeling that follows is based on a "Moneyball" dataset where the response variable is the number of wins for a given team for a particular season. The aim of this report is to build models and identify the one that best explains the variability in the observed data in order to make predictions on new, unseen data.
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
@@ -117,8 +117,8 @@ data_train %>%
 A visualization of correlation between the variables reveals both expected an unexpected observations:
 
 1. Most puzzling is the very high correlation between the number of homeruns pitched and the number of homeruns batted. These variables are expected to be unrelated as one variable represents an advantage for the batting team, while the other is an advantage for the opposing team. 
-2. The response variable "TARGET_WINS" is most highly correlated with "TEAM_BATTING_H" which is sensible as this represnts the number of base hits by batters. More hits would suggest more opportunities to run around the bases and make it home to score points.
-3. While these correlations to the target variable are fairly weak, it is interesting that batting homeruns or triples is less correlated to a win that batting doubles. This could be simply be due to the fact that homeruns and triples occur less frequently, and when then they do occur and the bases might not be loaded. This means that a team might incrementally benefits less from a few great hits of the ball comapred to more frequent "lesser" hits.
+2. The response variable "TARGET_WINS" is most highly correlated with "TEAM_BATTING_H" which is sensible as this represents the number of base hits by batters. More hits would suggest more opportunities to run around the bases and make it home to score points.
+3. While these correlations to the target variable are fairly weak, it is interesting that batting homeruns or triples is less correlated to a win that batting doubles. This could be simply be due to the fact that homeruns and triples occur less frequently, and when then they do occur and the bases might not be loaded. This means that a team might incrementally benefits less from a few great hits of the ball compared to more frequent "lesser" hits.
 
 ```{r correlations_plot, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 q <- cor(data_train)
