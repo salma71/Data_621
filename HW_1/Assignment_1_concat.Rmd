@@ -595,7 +595,7 @@ summary(mi_m2)
 
 ## Model Selection 
 
-After exploring a variety of models, we decided to test the models with the highest r-squared values (greater than 0.4) for prediction. While the backwards eliminated model using transformations was more parsimonious, it generated non-sensical predictions like negative values for number of wins. For this reason, we selected the Polynomial Regression model `step_back`, the predictions for which are displayed below. Finally, we record the generated predictions to file.
+After exploring a variety of models, we decided to test the models with the highest r-squared values (greater than 0.4) for prediction. While the backwards eliminated model using transformations was more parsimonious, it generated non-sensical predictions like Target Wins in the 200k range. For this reason, we selected the Polynomial Regression model `step_back`, the predictions for which are displayed below. Finally, we record the generated predictions to file.
 
 ```{r}
 data_test$TARGET_WINS <- round(predict(step_back, data_test), 0)
