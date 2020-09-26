@@ -595,7 +595,7 @@ summary(mi_m2)
 
 ## Model Selection 
 
-In this step, we decided to go for the model with the highest r-squared to test against. In this case the model `step_back` has R-squared value of 0.4. We applied the predict method to predict number of wins then round the output for readability. Finally, we record the generated predictions on disk.
+After exploring a variety of models, we decided to test the models with the highest r-squared values (greater than 0.4) for prediction. While the backwards eliminated model using transformations was more parsimonious, it generated non-sensical predictions like negative values for number of wins. For this reason, we selected the Polynomial Regression model `step_back`, the predictions for which are displayed below. Finally, we record the generated predictions to file.
 
 ```{r}
 data_test$TARGET_WINS <- round(predict(step_back, data_test), 0)
