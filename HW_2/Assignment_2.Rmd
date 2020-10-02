@@ -1,0 +1,32 @@
+---
+title: "Data 621 - Homework 2"
+author: "Dhairav Chhatbar, Mael Illien, Salma Elshahawy"
+date: "10/1/2020"
+output: 
+  html_document:
+    code_folding: hide
+    theme: cosmo
+    highlight: tango
+    toc: true
+    number_section: false
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    df_print: paged
+---
+# Data 621 Homework1 
+
+## Introduction 
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
+library(skimr)
+library(tidyverse)
+library(caret)
+library(kableExtra)
+```
+
+```{r}
+data <- read.csv()
+```
+
