@@ -23,10 +23,62 @@ knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
 library(skimr)
 library(tidyverse)
 library(caret)
+library(pROC)
 library(kableExtra)
 ```
 
-```{r}
-data <- read.csv()
+```{r data}
+data_raw <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_2/classification-output-data.csv")
+data <- data_raw %>% select(class, scored.class, scored.probability)
 ```
 
+```{r data_table}
+# Columns represent the actual class
+# Rows represent the score/predicted class
+t <- with(data, table(scored.class, class))
+t
+```
+
+```{r accuracy}
+# Accuracy
+```
+
+```{r error_rate}
+# Classification Error Rate
+```
+
+```{r precision}
+# Precision
+```
+
+```{r sensitivity}
+# Sensitivity
+```
+
+```{r specificity}
+# Specificity
+```
+
+```{r f1}
+# F1 Score
+```
+
+```{r f1_bounds}
+# Bounds of F1 score
+```
+
+```{r f1_bounds}
+# Classification Output
+```
+
+```{r roc}
+# ROC Curve
+```
+
+```{r caret}
+# Investigating caret
+```
+
+```{r pROC}
+# Investigating pROC
+```
