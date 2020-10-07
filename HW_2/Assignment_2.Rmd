@@ -102,7 +102,7 @@ precision(data)
 
 Write a function that takes the data set as a dataframe, with actual and predicted classifications identified,
 and returns the sensitivity of the predictions. Sensitivity is also known as recall.
-$$Precision=\frac{TP}{TP+FP}$$
+$$Sensitivity=\frac{TP}{TP+FN}$$
 
 ```{r sensitivity}
 # Sensitivity
@@ -144,14 +144,13 @@ f1_score <- function(x){
   (2*precision(x)*sensitivity(x))/(precision(x)+sensitivity(x))
 }
 f1_score(data)
-
 ```
 
 ## 9. F1 score bound
 
 Before we move on, let’s consider a question that was asked: What are the bounds on the F1 score? Show that the F1 score will always be between 0 and 1.
 
-_**Both Precision and Sensitivity used to calculate F1 score are bounded between 0 and 1. Therefore, F1 score will be between 0 and 1.**_
+_**Both Precision and Sensitivity used to calculate F1 score are bounded between 0 and 1. Therefore, the F1 score will be between 0 and 1 as the upper bound is limited by $\frac{2x1x1}{1+1}$ which simplifies to 1 and any 0 value of Precision or Specificity makes the numerator 0 to form the lower bound.**_
 
 ## 10. ROC curve
 
@@ -169,16 +168,23 @@ ROC <- function(x, y){
   TPR_df <- c(diff(xy$TPR), 0)
   AUC <- round(sum(xy$TPR * FPR_df) + sum(TPR_df * FPR_df)/2, 4)
   
-  plot(xy$FPR, xy$TPR, type = "l",
-       main = "ROC Curve",
-       xlab = "False Postivie Rate",
-       ylab = "True Positive Rate")
-  abline(a = 0, b = 1)
-  legend(.6, .4, AUC, title = "AUC")
+  p <- ggplot(data=xy, aes(x=FPR, y=TPR)) + geom_line() +
+        geom_abline(slope=1,intercept=0) +
+        labs(title="ROC Curve", x ="False Positive Rate", y = "True Positive Rate") +
+        annotate("text", x = 0.75, y = 0.25, label = paste0("AUC: ", AUC))
+  
+  return(list("plot" = p, "auc" = AUC))
 }
-
-ROC(data$class,data$scored.probability)
+roc <- ROC(data$class,data$scored.probability)
 ```
+```{r}
+roc$auc
+```
+
+```{r}
+roc$plot
+```
+
 
 ## 11. Classification report
 
@@ -190,7 +196,7 @@ names(metrics) <- c("Accuracy", "Classification Error Rate", "Precision", "Sensi
 as.data.frame(metrics, col.names = "Metrics")
 ```
 
-## 12. Caret invistigation
+## 12. Caret investigation
 
 Investigate the caret package. In particular, consider the functions confusionMatrix, sensitivity, and specificity. Apply the functions to the data set. How do the results compare with your own functions?
 
@@ -208,15 +214,18 @@ written_function <- c(accurary(data), sensitivity(data), specificity(data))
 d <- cbind(caret_package, written_function)
 as.data.frame(d)
 ```
+The results from the caret package match our functions.
 
 ## 13. Investigate pROC
 
 Investigate the pROC package. Use it to generate an ROC curve for the data set. How do the results compare with your own functions?
 
-```{r pROC}
+```{r pROC, message=FALSE, warning=FALSE}
 # Investigating pROC
-#The results are exactly the same
-par(mfrow = c(1, 2))
-plot(roc(data$class, data$scored.probability), print.auc = TRUE)
-ROC(data$class,data$scored.probability)
+library(gridExtra)
+library(ggplotify)
+grid.arrange(as.grob(~plot(roc(data$class, data$scored.probability), print.auc = TRUE)), ROC(data$class,data$scored.probability)$plot, ncol=2)
 ```
+As shown on the plots aboves, the results from the pROC package are in agreement with our own functions.
+
+
