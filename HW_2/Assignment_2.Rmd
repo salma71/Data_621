@@ -226,6 +226,7 @@ library(gridExtra)
 library(ggplotify)
 grid.arrange(as.grob(~plot(roc(data$class, data$scored.probability), print.auc = TRUE)), ROC(data$class,data$scored.probability)$plot, ncol=2)
 ```
-As shown on the plots aboves, the results from the pROC package are in agreement with our own functions.
+  
+As shown on the plots above, the results from the pROC package are in agreement with our own functions.
 
 
