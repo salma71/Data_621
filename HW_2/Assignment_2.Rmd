@@ -14,7 +14,7 @@ output:
       smooth_scroll: true
     df_print: paged
 ---
-# Data 621 Homework1 
+# Data 621 Homework2 
 
 ## 1. Fetching Data 
 
