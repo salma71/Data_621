@@ -1,0 +1,128 @@
+---
+title: "Data 621 - Homework 3"
+author: "Dhairav Chhatbar, Mael Illien, Salma Elshahawy"
+date: "10/15/2020"
+output: 
+  html_document:
+    code_folding: hide
+    theme: cosmo
+    highlight: tango
+    toc: true
+    number_section: false
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    df_print: paged
+---
+# Data 621 Homework3 
+
+## Introduction 
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
+library(skimr)
+library(ggplot2)
+library(ggcorrplot)
+library(tidyverse)
+library(PerformanceAnalytics)
+library(DMwR)
+library(caret)
+library(kableExtra)
+library(DescTools)
+library(cowplot)
+```
+
+```{r message=FALSE, warning=FALSE}
+data_train <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_3/crime-training-data_modified.csv", header = TRUE)
+data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_3/crime-evaluation-data_modified.csv", header = TRUE)
+```
+
+## Data Exploration {.tabset .tabset-fade .tabset-pills}
+
+### Data Exploration
+
+```{r data_dimension_train, message=FALSE, warning=FALSE}
+dim(data_train)
+```
+
+```{r data_types, message=FALSE, warning=FALSE}
+# list types for each attribute
+sapply(data_train, class)
+```
+
+```{r data_summary_train, message=FALSE, warning=FALSE}
+skim(data_train)
+```
+
+---
+
+### Missing Data
+
+```{r explore_missing_data_train, message=FALSE, warning=FALSE}
+# data_train %>% 
+#   gather(variable, value) %>%
+#   filter(is.na(value)) %>%
+#   group_by(variable) %>%
+#   tally() %>%
+#   mutate(percent = n / nrow(data_train) * 100) %>%
+#   mutate(percent = paste0(round(percent, ifelse(percent < 10, 1, 0)), "%")) %>%
+#   arrange(desc(n)) %>%
+#   rename(`Variable Missing Data` = variable,
+#          `Number of Records` = n,
+#          `Share of Total` = percent) %>%
+#   kable() %>%
+#   kable_styling()
+```
+
+---
+
+### Visualization
+
+```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+data_train %>% 
+  gather() %>% 
+  ggplot(aes(x= value)) + 
+  geom_density(fill='pink') + 
+  facet_wrap(~key, scales = 'free')
+```
+
+#### Correlations with Response Variable
+
+```{r correlations_plot, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+q <- cor(data_train)
+ggcorrplot(q, type = "upper", outline.color = "white",
+           ggtheme = theme_classic,
+           colors = c("#6D9EC1", "white", "#E46726"),
+           lab = TRUE, show.legend = FALSE, tl.cex = 8, lab_size = 3) 
+```
+---
+
+## Data Preparation {.tabset .tabset-fade .tabset-pills}
+
+
+
+---
+
+### Data Transformation 
+
+
+
+---
+ 
+### Feature Engineering 
+
+
+---
+
+## Model Building {.tabset .tabset-fade .tabset-pills}
+
+### Model_1.1 
+
+### Model_1.2 
+
+### Model_1.3 
+
+## Model Selection 
+
+---
