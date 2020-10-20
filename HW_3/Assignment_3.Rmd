@@ -42,15 +42,6 @@ data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master
 
 ### Data Exploration
 
-```{r data_dimension_train, message=FALSE, warning=FALSE}
-dim(data_train)
-```
-
-```{r data_types, message=FALSE, warning=FALSE}
-# list types for each attribute
-sapply(data_train, class)
-```
-
 ```{r data_summary_train, message=FALSE, warning=FALSE}
 skim(data_train)
 ```
@@ -59,8 +50,10 @@ skim(data_train)
 
 ### Missing Data
 
+There is no missing data per the skim summary above.
+
 ```{r explore_missing_data_train, message=FALSE, warning=FALSE}
-# data_train %>% 
+# data_train %>%
 #   gather(variable, value) %>%
 #   filter(is.na(value)) %>%
 #   group_by(variable) %>%
@@ -81,6 +74,7 @@ skim(data_train)
 
 ```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 data_train %>% 
+  select(-target) %>%
   gather() %>% 
   ggplot(aes(x= value)) + 
   geom_density(fill='pink') + 
@@ -96,6 +90,12 @@ ggcorrplot(q, type = "upper", outline.color = "white",
            colors = c("#6D9EC1", "white", "#E46726"),
            lab = TRUE, show.legend = FALSE, tl.cex = 8, lab_size = 3) 
 ```
+
+```{r}
+#pairs(data_train, col=data_train$target)
+```
+
+
 ---
 
 ## Data Preparation {.tabset .tabset-fade .tabset-pills}
@@ -118,6 +118,53 @@ ggcorrplot(q, type = "upper", outline.color = "white",
 ## Model Building {.tabset .tabset-fade .tabset-pills}
 
 ### Model_1.1 
+
+```{r}
+glm.fit1 <- glm(target ~ ., data=data_train, family=binomial)
+summary(glm.fit1)
+```
+
+```{r}
+glm.fit2 <- glm(target ~ . -rm, data=data_train, family=binomial)
+summary(glm.fit2)
+```
+```{r}
+glm.fit3 <- glm(target ~ . -rm -chas, data=data_train, family=binomial)
+summary(glm.fit3)
+```
+
+```{r}
+glm.fit4 <- glm(target ~ . -rm -chas -indus, data=data_train, family=binomial)
+summary(glm.fit4)
+```
+
+```{r}
+glm.fit5 <- glm(target ~ . -rm -chas -indus -lstat, data=data_train, family=binomial)
+summary(glm.fit5)
+```
+
+```{r}
+glm.probs <- predict(glm.fit5, type="response")
+glm.pred <- ifelse(glm.probs > 0.5, 1, 0)
+results <- tibble(target=data_train$target, pred=glm.pred)
+results
+```
+
+```{r}
+table(glm.pred,data_train$target)
+```
+
+```{r}
+b <- results %>%
+  mutate(pred.class = as.factor(pred), target.class = as.factor(target))
+confusionMatrix(b$pred.class,b$target.class, positive = "1")
+```
+
+```{r}
+library(pROC)
+plot(roc(b$target.class,glm.probs), print.auc = TRUE)
+```
+
 
 ### Model_1.2 
 
