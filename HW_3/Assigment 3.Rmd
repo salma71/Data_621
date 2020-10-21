@@ -97,8 +97,8 @@ Looking at the correlation plot of our data set we see the below and confirm som
   
 * the target variable is positively correlated with **nox(.73)**, **age(.63)**, **rad(.63)**, and **tax(.61)**
 * the target variable is negatively correlated with **dis(-.62)**
-* as seen in the density and box plots, the **chas** variable as a very weak correlation with all the other variables, and including the target. Therefore we can look to eliminate it from the analysis
-*There is present a amount of correlation amongst the predictor variables and this is suspect for multicollinearity issues  
+* as seen in the density and box plots, the **chas** variable as a very weak correlation with all the other variables, and including the target. Therefore we can look to eliminate it from the analysis  
+* There is present a amount of correlation amongst the predictor variables and this is suspect for multicollinearity issues  
 
 
 Highest correlations amongst predictor variables:  
@@ -139,8 +139,6 @@ data_train_m$target <- as.factor(data_train_m$target)
 ### Influential Leverage Points
 In preparation of the data to use in the model we will look to see if within the data set that are any bad influence points that may have a significant impact on the model.
 
-We find that observation 457 is influential outliers as they have the largest cook distance and their standardized residuals are more 3 SD's away from the mean
-
 From the general model below are some outlier observations based on Cooks distance, though not all outlier observations are influential
 ```{r}
 ilp <- glm(target ~ .,data = data_train_m, family = binomial(link="logit"))
@@ -151,12 +149,12 @@ plot(ilp, which = 4, id.n = 5)
 
 To see if any outlier observations are influential we plot the standardized residual error to determine if any residuals are above the absolute value of 3. 
 ```{r}
-augment(ilp) %>% mutate(index = 1:n()) %>% ggplot( aes(index, .std.resid)) + geom_point(aes(color=target)) + labs(y= "Standardized Residuals", x=" ")
+augment(ilp) %>% mutate(index = 1:n()) %>% ggplot( aes(index, .std.resid)) + geom_point(aes(color=target)) + labs(y= "Standardized Residuals", x="Observation Index")
 ```
 
 From the above plot there are is 1 value that is greater than 3. Observation 457. We will remove them from our dataset, we will also remove observation 338 which is close to 3 but not quite
 ```{r}
-#the two influencial points, observations and 457
+
 (augment(ilp) %>% mutate(index = 1:n()) %>% top_n(2, .std.resid))[,c(1:9,15,19)]
 
 #remove from model
