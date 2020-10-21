@@ -1,0 +1,250 @@
+---
+title: "Data 621 - Homework 3"
+author: "Dhairav Chhatbar, Mael Illien, Salma Elshahawy"
+date: "10/15/2020"
+output: 
+  html_document:
+    code_folding: hide
+    theme: cosmo
+    highlight: tango
+    toc: true
+    number_section: false
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    df_print: paged
+---
+# Data 621 Homework3 
+
+## Introduction 
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
+library(skimr)
+library(ggplot2)
+library(ggcorrplot)
+library(tidyverse)
+library(PerformanceAnalytics)
+library(DMwR)
+library(caret)
+library(kableExtra)
+library(DescTools)
+library(cowplot)
+library(broom)
+library(caret)
+```
+
+```{r message=FALSE, warning=FALSE}
+data_train <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_3/crime-training-data_modified.csv", header = TRUE)
+data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_3/crime-evaluation-data_modified.csv", header = TRUE)
+```
+
+## Data Exploration {.tabset .tabset-fade .tabset-pills}
+
+### Data Exploration
+
+```{r data_summary_train, message=FALSE, warning=FALSE}
+skim(data_train)
+```
+
+---
+
+### Missing Data
+
+There is no missing data per the skim summary above.
+
+```{r explore_missing_data_train, message=FALSE, warning=FALSE}
+# data_train %>%
+#   gather(variable, value) %>%
+#   filter(is.na(value)) %>%
+#   group_by(variable) %>%
+#   tally() %>%
+#   mutate(percent = n / nrow(data_train) * 100) %>%
+#   mutate(percent = paste0(round(percent, ifelse(percent < 10, 1, 0)), "%")) %>%
+#   arrange(desc(n)) %>%
+#   rename(`Variable Missing Data` = variable,
+#          `Number of Records` = n,
+#          `Share of Total` = percent) %>%
+#   kable() %>%
+#   kable_styling()
+```
+
+---
+
+### Visualization
+
+```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+data_train %>% 
+  select(-target) %>%
+  gather() %>% 
+  ggplot(aes(x= value)) + 
+  geom_density(fill='pink') + 
+  facet_wrap(~key, scales = 'free')
+```
+
+#### Correlations with Response Variable
+Highest correlations amongst predictor variables:  
+  
+- tax|rad (.91)  
+-nox|indus (.76)  
+-age|nox(.74)  
+-tax|indus (.73)  
+-medv|rm (.71)  
+
+-dis|indus (-.7)  
+-medv|lstat (-.74)  
+-dist|age (-.75)  
+-dis|nox (-.77)  
+
+rad/tax variable pair is suspect for multicollinearity issues  
+remove chas variable, not correlated with anything including the target 
+
+```{r correlations_plot, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+q <- cor(data_train)
+ggcorrplot(q, type = "upper", outline.color = "white",
+           ggtheme = theme_classic,
+           colors = c("#6D9EC1", "white", "#E46726"),
+           lab = TRUE, show.legend = FALSE, tl.cex = 8, lab_size = 3) 
+```
+
+```{r}
+#pairs(data_train, col=data_train$target)
+```
+#### Box Plot
+```{r box_plot, warning=FALSE, message=FALSE, fig.height=8, fig.width=10}
+
+data_train_long <- gather(data_train, "Variable", "Value", zn:medv)
+data_train_long$target <- as.factor(data_train_long$target)  
+ggplot(data_train_long, aes(x=target, y=Value)) + geom_boxplot(varwidth = TRUE, alpha=0.2, fill="orange1") + 
+  facet_wrap(~Variable, scales = "free")
+  
+
+```
+
+---
+
+## Data Preparation {.tabset .tabset-fade .tabset-pills}
+```{r}
+data_train_m <- data_train %>% select(-chas)
+
+#convert target to factor
+data_train_m$target <- as.factor(data_train_m$target)
+
+```
+
+### Influential Leverage Points
+We find that observations 338 and 457 are influential outliers as they have the largest cook distance and their standardized residuals are more 3 SD's away from the mean
+```{r}
+ilp <- glm(target ~ .,data = data_train_m, family = binomial(link="logit"))
+
+#Top 5 outliers
+plot(ilp, which = 4, id.n = 5)
+
+#determine if any outiers are influencial. there are 2
+augment(ilp) %>% mutate(index = 1:n()) %>% ggplot( aes(index, .std.resid)) + geom_point(aes(color=target))
+
+#the two influencial points, observations 338, and 457
+augment(ilp) %>% mutate(index = 1:n()) %>% top_n(2, .cooksd)
+
+#remove from model
+data_train_m <- data_train_m[-c(338,457),]
+
+
+```
+
+---
+
+### Data Transformation 
+
+
+
+---
+ 
+### Feature Engineering 
+
+
+---
+
+## Model Building {.tabset .tabset-fade .tabset-pills}
+
+### Model_1.1 
+
+```{r}
+glm.fit1 <- glm(target ~ ., data=data_train, family=binomial)
+summary(glm.fit1)
+```
+
+```{r}
+glm.fit2 <- glm(target ~ . -rm, data=data_train, family=binomial)
+summary(glm.fit2)
+```
+```{r}
+glm.fit3 <- glm(target ~ . -rm -chas, data=data_train, family=binomial)
+summary(glm.fit3)
+```
+
+```{r}
+glm.fit4 <- glm(target ~ . -rm -chas -indus, data=data_train, family=binomial)
+summary(glm.fit4)
+```
+
+```{r}
+glm.fit5 <- glm(target ~ . -rm -chas -indus -lstat, data=data_train, family=binomial)
+summary(glm.fit5)
+```
+
+```{r}
+glm.probs <- predict(glm.fit5, type="response")
+glm.pred <- ifelse(glm.probs > 0.5, 1, 0)
+results <- tibble(target=data_train$target, pred=glm.pred)
+results
+```
+
+```{r}
+table(glm.pred,data_train$target)
+```
+
+```{r}
+b <- results %>%
+  mutate(pred.class = as.factor(pred), target.class = as.factor(target))
+confusionMatrix(b$pred.class,b$target.class, positive = "1")
+```
+
+```{r}
+library(pROC)
+plot(roc(b$target.class,glm.probs), print.auc = TRUE)
+```
+
+
+### Model_1.2 
+```{r}
+
+m1 <- glm(target ~., data = data_train_m, family = binomial(link="logit"))
+summary(m1)
+
+#check for multicollinearity, mdev is 8.9. this can be an issue.
+#mdev is corrolated with lstat and rm, and both are not significant in the model m1. Remove them
+car::vif(m1)
+
+#remove rm and lstat from model
+data_train_mv2 <- data_train_m %>% select(-rm, -lstat)
+
+m1b <- glm(target ~., data = data_train_mv2, family = binomial(link="logit"))
+summary(m1b)
+
+#after removing rm and lstat from the dataset there are no multicollinearity issues in model m1b
+car::vif(m1b)
+
+#continue backwards elimination
+m1c <- update(m1b, . ~ . -indus)
+summary(m1c)
+
+
+```
+
+### Model_1.3 
+
+## Model Selection 
+
+---
