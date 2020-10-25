@@ -18,6 +18,8 @@ output:
 
 ## Introduction 
 
+For this project, we built a binary logistic regression model from a dataset containing information on crime in various neighborhoods of a major city. Given a vector of predictors, we seek to predict whether the neighborhood crime rate is above the median. 
+
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
@@ -43,35 +45,17 @@ data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master
 
 ### Data Exploration
 
+The dataset is composed of 466 observations and 12 predictor variables. The response variable `target` is binary (0 or 1). A quick look at the distribution of the training dataset reveals some skewed predictors. All observations in this dataset are complete.
+
 ```{r data_summary_train, message=FALSE, warning=FALSE}
 skim(data_train)
 ```
 
 ---
 
-### Missing Data
-
-There is no missing data per the skim summary above.
-
-```{r explore_missing_data_train, message=FALSE, warning=FALSE}
-# data_train %>%
-#   gather(variable, value) %>%
-#   filter(is.na(value)) %>%
-#   group_by(variable) %>%
-#   tally() %>%
-#   mutate(percent = n / nrow(data_train) * 100) %>%
-#   mutate(percent = paste0(round(percent, ifelse(percent < 10, 1, 0)), "%")) %>%
-#   arrange(desc(n)) %>%
-#   rename(`Variable Missing Data` = variable,
-#          `Number of Records` = n,
-#          `Share of Total` = percent) %>%
-#   kable() %>%
-#   kable_styling()
-```
-
----
-
 ### Visualization
+
+With a closer look at the distribution of the data using density plots, we can identify bimodal distribution for `indus`, `rar` and `tax` and skew in `dis`, `nox`, `ptratio` and `zn`.
 
 ```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 data_train %>% 
@@ -83,6 +67,8 @@ data_train %>%
 ```
 
 #### Correlations with Response Variable
+
+Comment on correlation matrix
 
 ```{r correlations_plot, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 q <- cor(data_train)
@@ -119,6 +105,7 @@ ggcorrplot(q, type = "upper", outline.color = "white",
 ## Model Building {.tabset .tabset-fade .tabset-pills}
 
 ```{r}
+# Initialize a df that will store the metrics of models
 models.df <- tibble(id=character(), formula=character(), res.deviance=numeric(), null.deviance=numeric(),
                  aic=numeric(), accuracy=numeric(), sensitivity=numeric(), specificity=numeric(),
                 precision.deviance=numeric(), stringsAsFactors=FALSE) 
@@ -126,6 +113,7 @@ models.df <- tibble(id=character(), formula=character(), res.deviance=numeric(),
 
 
 ```{r}
+# A function to extract the relevant metrics from the summary and confusion matrix
 build_model <- function(id, formula, data) {
   glm.fit <- glm(formula, data=data, family=binomial)
   print(summary(glm.fit))
@@ -159,7 +147,7 @@ build_model <- function(id, formula, data) {
 }
 ```
 
-### Model_1.1 
+### Model_1.1 Base Model Subsets
 
 ```{r}
 # glm.fit1 <- glm(target ~ ., data=data_train, family=binomial)
@@ -208,9 +196,9 @@ models.df
 
 ### Model_1.2 
 
-### Model_1.3 
+### Model_1.3 Transformations
 
-Transforming the predictors with significant skew and adding them to the base model.
+Here we added transformed predictors with significant skew to the base model and iteratively eliminated features that were not statistically significant.
 
 ```{r}
 trans_models.df <- tibble(id=character(), formula=character(), res.deviance=numeric(), null.deviance=numeric(),
@@ -263,11 +251,18 @@ trans_models.df  <- rbind(trans_models.df, mt5$df_info)
 
 ## Model Selection 
 
+When comparing the full model to its subsets we see that residual deviance tends to increase as predictors are dropped which indicates that the smaller models explain more of the residuals. Additionally, AIC also decreases meaning that less infomation is lost when using the smaller models. There is a minor accuracy penalty of 0.04% on the testing data when using the smaller model, which is acceptable. 
+
 ```{r}
 models.df
 ```
 
+The model that used additional transformed features follow the same observations as above, residual deviance increases and AIC decreases with smaller models. While the residual deviance is smaller than in the base model subsets, we have gained 1.9% in accuracy.
+
 ```{r}
 trans_models.df
 ```
+
+As outlined above, model mt5 yields the best prediction accuracy on the testing data.
+
 ---
