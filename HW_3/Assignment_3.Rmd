@@ -206,34 +206,40 @@ trans_models.df <- tibble(id=character(), formula=character(), res.deviance=nume
                 precision.deviance=numeric(), stringsAsFactors=FALSE) 
 ```
 
+We proceed to remove the variables that were identified earlier to have low correlation or significant collinearity.
+
+```{r}
+data_train_trans <- data_train %>% select(-chas,-rm,-lstat)
+```
+
 ```{r warning=FALSE}
-mt1 <- build_model("mt1" ,"target ~ . + log(dis)+log(nox)", data=data_train)
+mt1 <- build_model("mt1" ,"target ~ . + log(dis)+log(nox)", data=data_train_trans)
 mt1$df_info
 trans_models.df  <- rbind(trans_models.df, mt1$df_info)
 ```
 
+We see that the transformed predictors that were introduced are collinear with the original predictors. To deal with this issue we remove the original predictors and proceed.
 
 ```{r}
-#glm.fit32 <- glm(target ~ nox + tax, data=data_train, family=binomial)
-#summary(glm.fit32)
-mt2 <- build_model("mt2","target ~ . + log(dis)+log(nox)-indus", data=data_train)
+car::vif(mt1$model)
+```
+
+
+```{r}
+mt2 <- build_model("mt2","target ~ . + log(dis)+log(nox)-dis-nox", data=data_train_trans)
 mt2$df_info
 trans_models.df  <- rbind(trans_models.df, mt2$df_info)
 ```
 
 
 ```{r}
-# glm.fit33 <- glm(target ~ nox + log(nox) + tax, data=data_train, family=binomial)
-# summary(glm.fit33)
-mt3 <- build_model("mt3","target ~ . + log(dis)+log(nox)-indus-chas", data=data_train)
+mt3 <- build_model("mt3","target ~ . + log(dis)+log(nox)-dis-nox-indus", data=data_train_trans)
 mt3$df_info
 trans_models.df  <- rbind(trans_models.df, mt3$df_info)
 ```
 
 ```{r}
-# glm.fit34 <- glm(target ~ nox + log(nox) + indus + zn + age + tax, data=data_train, family=binomial)
-# summary(glm.fit34)
-mt4 <- build_model("mt4","target ~ . + log(dis)+log(nox)-indus-chas-rm", data=data_train)
+mt4 <- build_model("mt4","target ~ . + log(dis)+log(nox)-dis-nox-indus-zn", data=data_train_trans)
 mt4$df_info
 trans_models.df  <- rbind(trans_models.df, mt4$df_info)
 ```
@@ -243,10 +249,17 @@ trans_models.df  <- rbind(trans_models.df, mt4$df_info)
 ```{r}
 # glm.fit5 <- glm(target ~ . -rm -chas -indus -lstat, data=data_train, family=binomial)
 # summary(glm.fit5)
-mt5 <- build_model("mt5","target ~ . + log(dis)+log(nox)-indus-chas-rm-lstat", data=data_train)
-mt5$df_info
-trans_models.df  <- rbind(trans_models.df, mt5$df_info)
+# mt5 <- build_model("mt5","target ~ . + log(dis)+log(nox)-indus-chas-rm-lstat", data=data_train)
+# mt5$df_info
+# trans_models.df  <- rbind(trans_models.df, mt5$df_info)
 ```
+
+
+```{r}
+#drop1(mt3$model,test="Chi")
+```
+
+
 
 
 ## Model Selection 
@@ -257,12 +270,34 @@ When comparing the full model to its subsets we see that residual deviance tends
 models.df
 ```
 
-The model that used additional transformed features follow the same observations as above, residual deviance increases and AIC decreases with smaller models. While the residual deviance is smaller than in the base model subsets, we have gained 1.9% in accuracy.
+
 
 ```{r}
 trans_models.df
 ```
 
-As outlined above, model mt5 yields the best prediction accuracy on the testing data.
+The models that used additional transformed features had different results compared to the observations above. This time, both residual deviance and AIC seem to increase with smaller models. 
+
+We see that mt1 which replaced the predictors `nox` and `dis` with their log transform has the highest accuracy (93.1%) and the lowest AIC (200.19) of the models tested so far. In addition, model mt1 delivers 1.5% more in accuracy than the best model subset without transformations.
+
+Our preference for this model is comfirmed by a likelyhood ratio test. 
+
+When comparing a larger to a smaller model, the null hypothesis is that the coefficients in the larger model are 0. In our case, the small p value suggests that the extra coefficients are not 0 and that we prefer the larger model. 
+
+```{r}
+anova(mt4$model, mt1$model, test = "LRT")
+```
+
+Taking a look at the coefficients and marginal effects, we can estimate the relative effects of each predictor on the odds of the target variable, keeping the other predictors the same.
+
+```{r}
+round(exp(mt4$model$coefficients),3)
+```
+
+```{r}
+# Marginal effects
+LogitScalar <- mean(dlogis(predict(mt4$model, type="link")))
+LogitScalar * coef(mt3$model)
+```
 
 ---
