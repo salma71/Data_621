@@ -349,13 +349,6 @@ mt4$df_info
 trans_models.df  <- rbind(trans_models.df, mt4$df_info)
 ```
 
-We confirm with a marginal model plot that the expected values follow the observed values and therefore we can say that this model is adequate for the given data.
-
-```{r message=FALSE, warning=FALSE}
-mt1_model <- glm("target ~ . + log(dis)+log(nox)", data=data_train_trans, family = binomial(link="logit"))
-car::marginalModelPlots(mt1$model)
-```
-
 ## Model Selection 
 
 When comparing the full model to its subsets we see that residual deviance tends to increase as predictors are dropped which indicates that the smaller models explain more of the residuals. Additionally, AIC also decreases meaning that less infomation is lost when using the smaller models. There is a minor accuracy penalty of 0.04% on the testing data when using the smaller model, which is acceptable. 
