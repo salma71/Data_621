@@ -397,5 +397,22 @@ marginalModelPlots(glm(target ~ . + log(dis)+log(nox), data=data_train_trans, fa
 
 ```
 
+Based on model mt1, below is the prediction distribution of the test dataset, we see that the distribution is fairly split between the binary variable target
+```{r}
+data_test_trans <- data_test %>% select(-chas,-rm,-lstat)
+test_predict <- predict(mt1$model, newdata=data_test_trans)
+test_predict <- ifelse(test_predict<.5,0,1)
+
+data_test$target <- test_predict
+
+ggplot(data_test, aes(x=index(data_test), y=target, color=factor(target))) + geom_point() +
+  labs(x="Observation", y="target", title = "Model mt1 Prediction", colour = "target")
+
+table(test_predict)
+
+write.csv(test_predict, "CrimePredictions.csv")
+
+```
+
 
 ---
