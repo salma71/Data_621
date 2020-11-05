@@ -1,0 +1,151 @@
+---
+title: "Data 621 - Homework 4"
+author: "Dhairav Chhatbar, Mael Illien, Salma Elshahawy"
+date: "11/4/2020"
+output: 
+  html_document:
+    code_folding: hide
+    theme: cosmo
+    highlight: tango
+    toc: true
+    number_section: false
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    df_print: paged
+---
+# Data 621 Homework 4
+
+## Introduction 
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
+library(skimr)
+library(ggcorrplot)
+library(tidyverse)
+library(PerformanceAnalytics)
+library(DMwR)
+library(caret)
+library(kableExtra)
+library(DescTools)
+library(cowplot)
+library(pROC)
+library(broom)
+library(car)
+```
+
+```{r message=FALSE, warning=FALSE}
+data_train <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_4/insurance_training_data.csv", header = TRUE)
+data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_4/insurance-evaluation-data.csv", header = TRUE)
+```
+
+## Data Exploration {.tabset .tabset-fade .tabset-pills}
+
+### Data Exploration
+
+```{r data_summary_train, message=FALSE, warning=FALSE}
+skim(data_train)
+```
+
+---
+
+### Visualization
+
+```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+data_train %>% 
+  #select(-target) %>%
+  gather() %>% 
+  ggplot(aes(x= value)) + 
+  geom_density(fill='pink') + 
+  facet_wrap(~key, scales = 'free')
+```
+
+```{r, fig.height=8, fig.width=10}
+data_train_long <- gather(data_train, "Variable", "Value", zn:medv)
+data_train_long$target <- as.factor(data_train_long$target)  
+ggplot(data_train_long, aes(x=target, y=Value)) + geom_boxplot(varwidth = TRUE, alpha=0.2, fill="orange1") + facet_wrap(~Variable, scales = "free")
+```
+
+
+#### Correlations with Response Variable
+
+```{r correlations_plot, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+q <- cor(data_train)
+ggcorrplot(q, type = "upper", outline.color = "white",
+           ggtheme = theme_classic,
+           colors = c("#6D9EC1", "white", "#E46726"),
+           lab = TRUE, show.legend = FALSE, tl.cex = 8, lab_size = 3) 
+```
+
+```{r}
+#pairs(data_train, col=data_train$target)
+```
+
+
+---
+
+## Data Preparation {.tabset .tabset-fade .tabset-pills}
+
+
+---
+
+### Influential Leverage Points
+
+
+---
+
+## Model Building {.tabset .tabset-fade .tabset-pills}
+
+```{r}
+# Initialize a df that will store the metrics of models
+models.df <- tibble(id=character(), formula=character(), res.deviance=numeric(), null.deviance=numeric(),
+                 aic=numeric(), accuracy=numeric(), sensitivity=numeric(), specificity=numeric(),
+                precision.deviance=numeric(), stringsAsFactors=FALSE) 
+```
+
+
+```{r}
+# A function to extract the relevant metrics from the summary and confusion matrix
+build_model <- function(id, formula, data) {
+  glm.fit <- glm(formula, data=data, family=binomial)
+  print(summary(glm.fit))
+  glm.probs <- predict(glm.fit, type="response")
+  # Confirm the 0.5 threshold
+  glm.pred <- ifelse(glm.probs > 0.5, 1, 0)
+  results <- tibble(target=data$target, pred=glm.pred)
+  results <- results %>%
+    mutate(pred.class = as.factor(pred), target.class = as.factor(target))
+  
+  #print(confusionMatrix(results$pred.class,results$target.class, positive = "1"))
+  
+  acc <- confusionMatrix(results$pred.class,results$target.class, positive = "1")$overall['Accuracy']
+  sens <- confusionMatrix(results$pred.class,results$target.class, positive = "1")$byClass['Sensitivity']
+  spec <- confusionMatrix(results$pred.class,results$target.class, positive = "1")$byClass['Specificity']
+  prec <- confusionMatrix(results$pred.class,results$target.class, positive = "1")$byClass['Precision']
+  res.deviance <- glm.fit$deviance
+  null.deviance <- glm.fit$null.deviance  
+  aic <- glm.fit$aic
+  metrics <- list(res.deviance=res.deviance, null.deviance=null.deviance,aic=aic, accuracy=acc, sensitivity=sens, specificity=spec, precision=prec)
+  metrics <- lapply(metrics, round, 3)
+  
+  plot(roc(results$target.class,glm.probs), print.auc = TRUE)
+  model.df <- tibble(id=id, formula=formula, res.deviance=metrics$res.deviance, null.deviance=metrics$null.deviance, 
+                         aic=metrics$aic, accuracy=metrics$accuracy, sensitivity=metrics$sensitivity, specificity=metrics$specificity, precision=metrics$precision)
+  model.list <- list(model=glm.fit, df_info=model.df)
+  return(model.list)
+}
+```
+
+### Model 1: 
+
+### Model 2: 
+
+### Model 3: 
+
+
+## Model Selection 
+
+
+---
