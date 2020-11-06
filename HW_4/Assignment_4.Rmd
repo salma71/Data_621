@@ -18,7 +18,11 @@ output:
 
 ## Introduction 
 
+In this assignment, we will explore, analyze and model a data set containing approximately 8000 records representing a customer at an auto insurance company. Each record has two response variables. The first response variable, `TARGET_FLAG`, is binary. A “1” means that the person was in a car crash. On the other hand 0 means that the person was not. The second response variable is `TARGET_AMT`. This value is zero if the person did not crash their car. However,if they did crash their car, this number will be a value greater than zero.
 
+The objective is to build multiple linear regression and binary logistic regression models on the training data to predict the probability that a person will crash their car. Also, predict the amount of money it will cost if the person does crash their car. We will only use the variables given to us (or variables that we derive from the variables provided). 
+
+Below is a short description of the variables of interest in the data set:
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
@@ -41,6 +45,10 @@ data_train <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/maste
 data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_4/insurance-evaluation-data.csv", header = TRUE)
 ```
 
+```{r}
+data_train
+```
+
 ## Data Exploration {.tabset .tabset-fade .tabset-pills}
 
 ### Data Exploration
@@ -49,16 +57,116 @@ data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master
 skim(data_train)
 ```
 
+The dataset consists of **26** variables and **8161** observations with `AGE`, `YOJ`, and `CAR_AGE` variables containing some missing values. As stated previously, `TARGET_FLAG` and `TARGET_AMT` are our response variables. Also, `13` of the variables have discrete values and the rest of the variables are continuous. Also, there are some values that seem invalid (i.e. -3 `CAR_AGE`).
 ---
+
+### Fix type
+
+```{r}
+strip_dollars <- function(x){
+  x <- as.character(x)
+  x <- gsub(",", "", x)
+  x <- gsub("\\$", "", x)
+  as.numeric(x)
+}
+
+fix_data_types <- function(messy_df){
+  messy_df %>%
+    rowwise() %>%
+    mutate(INCOME = strip_dollars(INCOME),
+           HOME_VAL = strip_dollars(HOME_VAL),
+           BLUEBOOK = strip_dollars(BLUEBOOK),
+           OLDCLAIM = strip_dollars(OLDCLAIM)) %>%
+    ungroup()
+}
+
+na_bad_values <- function(messy_df){
+  messy_df %>%
+    rowwise() %>%
+    mutate(CAR_AGE = ifelse(CAR_AGE < 0, NA, CAR_AGE))%>%
+    ungroup()
+}
+
+data_train$TARGET_FLAG <- factor(data_train$TARGET_FLAG)
+
+
+data_train <- data_train %>%
+  fix_data_types() %>%
+  na_bad_values()
+
+data_test <- data_test %>%
+  fix_data_types() %>%
+  na_bad_values()
+```
+
+### Fix missing values
+
+```{r}
+fix_missing <- function(df) {
+  df %>% 
+    mutate_at(vars(c("CAR_AGE", "YOJ", "AGE", "INCOME", "HOME_VAL")), ~ifelse(is.na(.), median(., na.rm = TRUE), .))
+}
+
+data_train <- fix_missing(data_train)
+data_test <- fix_missing(data_test)
+```
 
 ### Visualization
 
+### Univariate charts
+
+Exploring the `TARGET_FLAG` with the numeric variables
+
+```{r fig.height=10, fig.width=10}
+plot_vars <- c("TARGET_FLAG", names(keep(data_train, is.numeric)))
+
+data_train[plot_vars] %>%
+  select(-INDEX, -TARGET_AMT) %>%
+  gather(variable, value, -TARGET_FLAG) %>%
+  ggplot(., aes(TARGET_FLAG, value, color=TARGET_FLAG)) + 
+  geom_boxplot() +
+  scale_color_brewer(palette="Set1") +
+  theme_light() +
+  theme(legend.position = "none") +
+  facet_wrap(~variable, scales ="free", ncol = 4) +
+  labs(x = element_blank(), y = element_blank())
+```
+
+There are a lot of outliers!! 
+
+```{r fig.height=5, fig.width=10}
+set.seed(42)
+accidents <- data_train %>%
+  filter(TARGET_FLAG == 1)
+
+ggplot(accidents, aes(x=TARGET_AMT)) + 
+  geom_density(fill='pink') +
+  theme_light() +
+  geom_vline(aes(xintercept = mean(TARGET_AMT)), lty=2, col="red") +
+  geom_label(aes(x=25000, y=0.00015, label=paste("mean =", round(mean(TARGET_AMT),0)))) +
+  geom_vline(aes(xintercept = median(TARGET_AMT)), lty=2, col="darkgreen") +
+  geom_label(aes(x=25000, y=0.00010, label=paste("median = ", round(median(TARGET_AMT), 0)))) +
+  labs(title="TARGET_AMT Density Plot", y="Density", x="TARGET_AMT")
+```
+
+```{r}
+data_train %>%
+  mutate(TARGET_AMT_OUTLIER = ifelse(TARGET_AMT_OUTLIER == 1, "Yes", "No")) %>%
+  group_by(TARGET_AMT_OUTLIER) %>%
+  summarise(Mean = mean(TARGET_AMT),
+            Median = median(TARGET_AMT)) %>%
+  kable() %>%
+  kable_styling()
+```
+
+
+
 ```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
-data_train %>% 
+data_train %>%
   #select(-target) %>%
-  gather() %>% 
-  ggplot(aes(x= value)) + 
-  geom_density(fill='pink') + 
+  gather() %>%
+  ggplot(aes(x= value)) +
+  geom_density(fill='pink') +
   facet_wrap(~key, scales = 'free')
 ```
 
