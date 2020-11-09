@@ -57,7 +57,11 @@ data_train
 skim(data_train)
 ```
 
-The dataset consists of **26** variables and **8161** observations with `AGE`, `YOJ`, and `CAR_AGE` variables containing some missing values. As stated previously, `TARGET_FLAG` and `TARGET_AMT` are our response variables. Also, `13` of the variables have discrete values and the rest of the variables are continuous. Also, there are some values that seem invalid (i.e. -3 `CAR_AGE`).
+```{r}
+data_train %>% summarize_all(funs(sum(is.na(.)) / length(.)))
+```
+
+The dataset consists of **26** variables and **8161** observations with `AGE`, `YOJ`, and `CAR_AGE` variables containing some missing values. As stated previously, `TARGET_FLAG` and `TARGET_AMT` are our response variables. Also, `13` of the variables have discrete values and the rest of the variables are continuous. Also, there are some values that seem invalid (i.e. -3 `CAR_AGE`). Since both variables the missing values are less than 5% then we can replace the missing values with the median. We Will take the median on the training set only and impute in both training and testing to avoid overfitting. 
 ---
 
 ### Fix type
@@ -93,7 +97,10 @@ data_train$TARGET_FLAG <- factor(data_train$TARGET_FLAG)
 data_train <- data_train %>%
   fix_data_types() %>%
   na_bad_values()
+```
 
+
+```{r}
 data_test <- data_test %>%
   fix_data_types() %>%
   na_bad_values()
@@ -115,12 +122,45 @@ data_test <- fix_missing(data_test)
 
 ### Univariate charts
 
+```{r}
+table(data_train$TARGET_FLAG)
+```
+
+There is an imbalance in the `TARGET_FLAG` variable
+
+Let's check the class distribution 
+
+```{r}
+prop.table(table(data_train$TARGET_FLAG))
+```
+
+The data contains only 26% that has already did an accident and 74% of negative flag. This is severly imbalanced data set. This would affect the accuracy score in the model building step if untreated. 
+
+To treat this unbalance, we would use the `over sampling` 
+
+```{r}
+set.seed(42)
+minority <- nrow(data_train[data_train$TARGET_FLAG == 1,])
+majority <- nrow(data_train[data_train$TARGET_FLAG == 0,])
+diff <- majority - minority
+minority_index <- data_train[data_train$TARGET_FLAG == 1,]$INDEX
+over_sample_train <- data.frame(INDEX = sample(minority_index, diff, TRUE)) %>%
+  merge(data_train, .) %>%
+  bind_rows(data_train)
+```
+
+check the balance again
+
+```{r}
+table(over_sample_train$TARGET_FLAG)
+```
+
 Exploring the `TARGET_FLAG` with the numeric variables
 
 ```{r fig.height=10, fig.width=10}
-plot_vars <- c("TARGET_FLAG", names(keep(data_train, is.numeric)))
+plot_vars <- c("TARGET_FLAG", names(keep(over_sample_train, is.numeric)))
 
-data_train[plot_vars] %>%
+over_sample_train[plot_vars] %>%
   select(-INDEX, -TARGET_AMT) %>%
   gather(variable, value, -TARGET_FLAG) %>%
   ggplot(., aes(TARGET_FLAG, value, color=TARGET_FLAG)) + 
@@ -132,11 +172,50 @@ data_train[plot_vars] %>%
   labs(x = element_blank(), y = element_blank())
 ```
 
-There are a lot of outliers!! 
+We see `BLUEBOOK`, `INCOME`, `OLDCLAIM` have high number of outliers compared to other variables. We also see people with older car, higher home value, higher income or older customer get in to less car crash. However, people with motor vehicle record points or high number of old claims tend to get in to more car crash.
+
+```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+over_sample_train %>% 
+  select(-TARGET_FLAG, -TARGET_AMT, -INDEX) %>%
+  keep(is.numeric) %>%
+  gather() %>% 
+  ggplot(aes(x= value)) + 
+  geom_histogram(stat = 'count',fill='pink') + 
+  facet_wrap(~key, scales = 'free')
+```
+
+There are some variables need scale transformation like `OLDCLAIM`, `INCOME`, ` BLUEBOOK`, `HOME_VAL`.
+`AGE`has a guassian distribution. 
+
+```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+over_sample_train %>% 
+  select(OLDCLAIM, INCOME, BLUEBOOK, HOME_VAL) %>%
+  gather() %>% 
+  ggplot(aes(x= value)) + 
+  geom_histogram(fill='pink') + 
+  facet_wrap(~key, scales = 'free')
+```
+
+we see several variables have high number of zeros. `AGE` is the only variable that is normally distributed. Rest of the variables show some skewness. We will perform Box-Cox transformation on these variables.
+
+Let's get the correlations
+
+
+```{r correlations_plot, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+corr_dataframe = over_sample_train %>%
+    mutate_if(is.factor, as.numeric)
+q <- cor(corr_dataframe)
+ggcorrplot(q, type = "upper", outline.color = "white",
+           ggtheme = theme_classic,
+           colors = c("#6D9EC1", "white", "#E46726"),
+           lab = TRUE, show.legend = FALSE, tl.cex = 8, lab_size = 3) 
+```
+
+we see `MVR_PTS`, `CLM_FREQ`, and `OLDCLAIM` are the most positively correlated variables with our response variables. Whereas, `URBANICITY` is the most negatively correlated variable. Rest of the variables are weakly correlated.
 
 ```{r fig.height=5, fig.width=10}
 set.seed(42)
-accidents <- data_train %>%
+accidents <- over_sample_train %>%
   filter(TARGET_FLAG == 1)
 
 ggplot(accidents, aes(x=TARGET_AMT)) + 
@@ -149,48 +228,30 @@ ggplot(accidents, aes(x=TARGET_AMT)) +
   labs(title="TARGET_AMT Density Plot", y="Density", x="TARGET_AMT")
 ```
 
+As was previously noted this distribution has a long tail. The mean payout is $5616 and the median is $4102. The median and mean are higher, of course for those observations we classified as outliers. The outlier cutoff point is $10594.
+
 ```{r}
-data_train %>%
-  mutate(TARGET_AMT_OUTLIER = ifelse(TARGET_AMT_OUTLIER == 1, "Yes", "No")) %>%
+outlier <- min(boxplot(over_sample_train[over_sample_train$TARGET_FLAG==1,]$TARGET_AMT, plot=FALSE)$out)
+over_sample_train %>%
+  mutate(TARGET_AMT_OUTLIER = ifelse(TARGET_AMT < outlier, "Yes", "No")) %>%
   group_by(TARGET_AMT_OUTLIER) %>%
   summarise(Mean = mean(TARGET_AMT),
-            Median = median(TARGET_AMT)) %>%
-  kable() %>%
-  kable_styling()
+            Median = median(TARGET_AMT)) 
+
 ```
 
-
-
-```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
-data_train %>%
-  #select(-target) %>%
-  gather() %>%
-  ggplot(aes(x= value)) +
-  geom_density(fill='pink') +
-  facet_wrap(~key, scales = 'free')
+```{r fig.height=10, fig.width=10}
+over_sample_train %>%
+  keep(is.numeric) %>%
+  gather(variable, value, -TARGET_AMT, -INDEX, -CLM_FREQ, -HOMEKIDS, -KIDSDRIV, -MVR_PTS) %>%
+  ggplot(., aes(value, TARGET_AMT)) + 
+  geom_point() +
+  scale_color_brewer(palette="Set1") +
+  theme_light() +
+  theme(legend.position = "none") +
+  facet_wrap(~variable, scales ="free", ncol = 3) +
+  labs(x = element_blank(), y = element_blank())
 ```
-
-```{r, fig.height=8, fig.width=10}
-data_train_long <- gather(data_train, "Variable", "Value", zn:medv)
-data_train_long$target <- as.factor(data_train_long$target)  
-ggplot(data_train_long, aes(x=target, y=Value)) + geom_boxplot(varwidth = TRUE, alpha=0.2, fill="orange1") + facet_wrap(~Variable, scales = "free")
-```
-
-
-#### Correlations with Response Variable
-
-```{r correlations_plot, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
-q <- cor(data_train)
-ggcorrplot(q, type = "upper", outline.color = "white",
-           ggtheme = theme_classic,
-           colors = c("#6D9EC1", "white", "#E46726"),
-           lab = TRUE, show.legend = FALSE, tl.cex = 8, lab_size = 3) 
-```
-
-```{r}
-#pairs(data_train, col=data_train$target)
-```
-
 
 ---
 
