@@ -172,7 +172,7 @@ data_train %>%
   keep(is.numeric) %>%
   gather() %>% 
   ggplot(aes(x= value)) + 
-  geom_histogram(stat = 'count',fill='pink') + 
+  geom_histogram(fill='pink') + 
   facet_wrap(~key, scales = 'free')
 ```
 
@@ -276,6 +276,8 @@ minority_index <- data_train[data_train$TARGET_FLAG == 1,]$INDEX
 over_sample_train <- data.frame(INDEX = sample(minority_index, diff, TRUE)) %>%
   merge(data_train, .) %>%
   bind_rows(data_train)
+
+data_train_balanced <- over_sample_train
 ```
 
 check the balance again
@@ -336,9 +338,271 @@ build_model <- function(id, formula, data) {
 
 ### Model 1: 
 
-### Model 2: 
+### Model 2: Basic Logit Models
 
-### Model 3: 
+We construct null, full and reduced models. The reduced model is created via stepwise regression.
+
+```{r}
+mod2_data <- data_train %>% select(-c('TARGET_AMT','INDEX'))
+#mod2_data <- data_train_balanced %>% select(-c('TARGET_AMT','INDEX'))
+
+model.null <- glm(TARGET_FLAG ~ 1,
+                 data=mod2_data,
+                 family = binomial(link="logit")
+                 )
+
+model.full <- glm(TARGET_FLAG ~ .,
+                 data=mod2_data,
+                 family = binomial(link="logit")
+                 )
+    
+model.reduced <- step(model.null,
+              scope = list(upper=model.full),
+             direction="both",
+             test="Chisq",
+             trace=0,
+             data=mod2_data)
+```
+
+The summary output of the reduced model retains a number of statistically significant predictors. 
+
+```{r}
+summary(model.reduced)
+```
+
+We compute McFadden's pseudo R squared for logistic regression and we see that the difference between the full model and the reduced model is only marginal. We proceed with the smaller model.
+
+```{r}
+paste0('Full model = ',round(1-logLik(model.full)/logLik(model.null),4))
+paste0('Reduced model = ',round(1-logLik(model.reduced)/logLik(model.null),4))
+```
+
+#### Diagnotics
+
+```{r}
+library(broom)
+# Select only numeric predictors and predict
+numdata <- mod2_data %>%
+  dplyr::select_if(is.numeric)
+predictors <- colnames(numdata)
+probabilities <- predict(model.reduced, type = "response")
+# Bind the logit and tidying the data for plot
+numdata <- numdata %>%
+  mutate(logit = log(probabilities/(1-probabilities))) %>%
+  gather(key = "predictors", value = "predictor.value", -logit)
+```
+
+```{r}
+ggplot(numdata, aes(logit, predictor.value))+
+  geom_point(size = 0.5, alpha = 0.5) +
+  geom_smooth(method = "loess") + 
+  theme_bw() + 
+  facet_wrap(~predictors, scales = "free_y")
+```
+
+#### Influential Values
+
+Inspect the influential values
+
+```{r}
+plot(model.reduced, which = 4, id.n = 3)
+```
+
+```{r}
+model.data <- augment(model.reduced) %>% 
+  mutate(index = 1:n())
+
+model.data %>% top_n(3, .cooksd)
+```
+
+#### Outliers
+
+Only one outlier. Consider removing?
+
+```{r}
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = TARGET_FLAG), alpha = .5) +
+  theme_bw()
+
+model.data %>% 
+  filter(abs(.std.resid) > 3)
+```
+
+#### Multicollinearity
+
+MI: JOB, EDUCATION > 5 too high?
+
+```{r}
+car::vif(model.reduced)
+```
+
+#### Prediction
+
+```{r}
+#glm.probs <- predict(model.reduced, type="response")
+glm.pred <- ifelse(probabilities > 0.5, 1, 0)
+results <- tibble(target=mod2_data$TARGET_FLAG, pred=glm.pred)
+results <- results %>%
+    mutate(pred.class = as.factor(pred), target.class = as.factor(target))
+  
+print(confusionMatrix(results$pred.class,results$target.class, positive = "1"))
+```
+
+
+### Model 3: Penalized Logistic Model
+
+Since the basic model contained many predictor variables, we take a look at a penalized logistic regression model which imposes a penalty on the model for having too many predictors. We will indentify the best shrinkage factor `lambda` through cross validation with an 80%/20% train/test data partitioning. 
+
+```{r}
+# Prepare the data
+library(glmnet)
+
+mod3_data <- data_train %>% select(-c('TARGET_AMT','INDEX'))
+
+# Split the data into training and test set
+set.seed(42)
+training.samples <- mod3_data$TARGET_FLAG %>% createDataPartition(p = 0.8, list = FALSE)
+train.data <- mod3_data[training.samples, ]
+test.data <- mod3_data[-training.samples, ]
+# Dummy code categorical predictor variables
+x <- model.matrix(TARGET_FLAG~., train.data)[,-1]
+# Convert the outcome (class) to a numerical variable
+y <- train.data$TARGET_FLAG
+```
+
+We fit a lasso regression model (alpha=1) and plot the cross-validation error over the log of lambda. The number of predictors are shown on top and the vertical lines represent the optimal (minimal) value of lambda as well as the value of lambda which minimizes the number of predictors but still remains within 1 standard error of the optimal. We will consider models with both of these lamdba values.
+
+```{r}
+# Find the best lambda using cross-validation
+set.seed(42) 
+cv.lasso <- cv.glmnet(x, y, alpha = 1, family = "binomial")
+plot(cv.lasso)
+```
+
+```{r}
+paste0('lambda.min = ',cv.lasso$lambda.min)
+paste0('lambda.1se = ',cv.lasso$lambda.1se) # simplest model but also lies within one standard error of the optimal value of lambda
+```
+
+The columns below compare the variables that are dropped in the lasso regression for the optimal and smallest model lambdas.
+
+```{r}
+# Display regression coefficients
+c_min_lambda <- coef(cv.lasso, cv.lasso$lambda.min)
+c_1se_lambda <- coef(cv.lasso, cv.lasso$lambda.1se)
+cbind(c_min_lambda, c_1se_lambda)
+```
+
+#### Predicting TARGET_FLAG
+
+When comparing the accurancy of the two lasso penalized models, we see that the difference in accuracy is marginal.
+
+```{r}
+# Final model with lambda.min
+lasso.model.min <- glmnet(x, y, alpha = 1, family = "binomial",
+                      lambda = cv.lasso$lambda.min)
+# Make prediction on test data
+x.test <- model.matrix(TARGET_FLAG ~., test.data)[,-1]
+probabilities <- lasso.model.min %>% predict(newx = x.test)
+predicted.classes <- as.factor(ifelse(probabilities > 0.5, 1, 0))
+# Model accuracy rate
+observed.classes <- as.factor(test.data$TARGET_FLAG)
+#mean(predicted.classes == observed.classes)
+print(confusionMatrix(predicted.classes,observed.classes, positive = "1"))
+```
+
+```{r}
+# Final model with lambda.1se
+lasso.model.se1 <- glmnet(x, y, alpha = 1, family = "binomial",
+                      lambda = cv.lasso$lambda.1se)
+# Make prediction on test data
+x.test <- model.matrix(TARGET_FLAG ~., test.data)[,-1]
+probabilities <- lasso.model.se1 %>% predict(newx = x.test)
+predicted.classes <- as.factor(ifelse(probabilities > 0.5, 1, 0))
+# Model accuracy rate
+observed.classes <- as.factor(test.data$TARGET_FLAG)
+#mean(predicted.classes == observed.classes)
+print(confusionMatrix(predicted.classes,observed.classes, positive = "1"))
+```
+
+#### Predicting TARGET_AMT
+
+```{r}
+data_train2 <- data_train %>% select(c(-'INDEX')) %>% filter(TARGET_FLAG==1) %>% select(-c('TARGET_FLAG'))
+```
+
+```{r}
+lm5 <- lm(TARGET_AMT ~ ., data_train2)
+summary(lm5)
+```
+
+```{r}
+# Split the data into training and test set
+set.seed(42)
+training.samples <- data_train2$TARGET_AMT %>% createDataPartition(p = 0.8, list = FALSE)
+train.data <- data_train2[training.samples, ]
+test.data <- data_train2[-training.samples, ]
+
+# Dummy code categorical predictor variables
+x <- model.matrix(TARGET_AMT~., train.data)[,-1]
+# Convert the outcome (class) to a numerical variable
+y <- train.data$TARGET_AMT
+
+```
+
+Fit lasso regression model (alpha=1).
+
+Plot of cross-validation error over the log of lambda displays the minimal value.
+
+```{r}
+set.seed(42)
+# Find the best lambda using cross-validation
+cv.lasso <- cv.glmnet(x, y, alpha = 0.1)
+plot(cv.lasso)
+```
+
+```{r}
+paste0('lambda.min = ',cv.lasso$lambda.min)
+paste0('lambda.1se = ',cv.lasso$lambda.1se) # gives the simplest model but also lies within one standard error of the optimal value of lambda
+```
+
+The columns below compare the variables that are dropped in the lasso regression for the optimal and smallest model lambdas.
+
+```{r}
+# Display regression coefficients
+c_min_lambda <- coef(cv.lasso, cv.lasso$lambda.min)
+c_1se_lambda <- coef(cv.lasso, cv.lasso$lambda.1se)
+cbind(c_min_lambda, c_1se_lambda)
+```
+
+```{r}
+# Final model with lambda.min
+lasso.model.min <- glmnet(x, y, alpha = 0.1,
+                      lambda = cv.lasso$lambda.min)
+# Make prediction on test data
+x.test <- model.matrix(TARGET_AMT ~., test.data)[,-1]
+probabilities <- lasso.model.min %>% predict(newx = x.test)
+predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
+# Model accuracy
+observed.classes <- test.data$TARGET_AMT
+mean(predicted.classes == observed.classes)
+```
+
+```{r}
+# Final model with lambda.1se
+lasso.model.se1 <- glmnet(x, y, alpha = 1,
+                      lambda = cv.lasso$lambda.1se)
+# Make prediction on test data
+x.test <- model.matrix(TARGET_AMT ~., test.data)[,-1]
+probabilities <- lasso.model.se1 %>% predict(newx = x.test)
+predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
+# Model accuracy rate
+observed.classes <- test.data$TARGET_AMT
+mean(predicted.classes == observed.classes)
+```
+
+
+### Model 4: 
 
 
 ## Model Selection 
