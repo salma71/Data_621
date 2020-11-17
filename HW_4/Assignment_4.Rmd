@@ -38,6 +38,7 @@ library(cowplot)
 library(pROC)
 library(broom)
 library(car)
+library(jtools)
 ```
 
 ```{r message=FALSE, warning=FALSE}
@@ -294,7 +295,7 @@ table(over_sample_train$TARGET_FLAG)
 
 ---
 
-## Model Building {.tabset .tabset-fade .tabset-pills}
+## Model Building - Logit Models {.tabset .tabset-fade .tabset-pills}
 
 ```{r}
 # Initialize a df that will store the metrics of models
@@ -306,31 +307,30 @@ models.df <- tibble(id=character(), formula=character(), res.deviance=numeric(),
 
 ```{r}
 # A function to extract the relevant metrics from the summary and confusion matrix
-build_model <- function(id, formula, data) {
-  glm.fit <- glm(formula, data=data, family=binomial)
-  print(summary(glm.fit))
-  glm.probs <- predict(glm.fit, type="response")
+score_model <- function(id, model, data, output=FALSE) {
+  if (output) print(summary(model))
+  glm.probs <- predict(model, type="response")
   # Confirm the 0.5 threshold
   glm.pred <- ifelse(glm.probs > 0.5, 1, 0)
-  results <- tibble(target=data$target, pred=glm.pred)
+  results <- tibble(target=data$TARGET_FLAG, pred=glm.pred)
   results <- results %>%
     mutate(pred.class = as.factor(pred), target.class = as.factor(target))
   
-  #print(confusionMatrix(results$pred.class,results$target.class, positive = "1"))
+  if (output) print(confusionMatrix(results$pred.class,results$target.class, positive = "1"))
   
   acc <- confusionMatrix(results$pred.class,results$target.class, positive = "1")$overall['Accuracy']
   sens <- confusionMatrix(results$pred.class,results$target.class, positive = "1")$byClass['Sensitivity']
   spec <- confusionMatrix(results$pred.class,results$target.class, positive = "1")$byClass['Specificity']
-  prec <- confusionMatrix(results$pred.class,results$target.class, positive = "1")$byClass['Precision']
-  res.deviance <- glm.fit$deviance
-  null.deviance <- glm.fit$null.deviance  
-  aic <- glm.fit$aic
-  metrics <- list(res.deviance=res.deviance, null.deviance=null.deviance,aic=aic, accuracy=acc, sensitivity=sens, specificity=spec, precision=prec)
+  #prec <- confusionMatrix(results$pred.class,results$target.class, positive = "1")$byClass['Precision']
+  res.deviance <- model$deviance
+  null.deviance <- model$null.deviance  
+  aic <- model$aic
+  metrics <- list(res.deviance=res.deviance, null.deviance=null.deviance,aic=aic, accuracy=acc, sensitivity=sens, specificity=spec)
   metrics <- lapply(metrics, round, 3)
   
-  plot(roc(results$target.class,glm.probs), print.auc = TRUE)
-  model.df <- tibble(id=id, formula=formula, res.deviance=metrics$res.deviance, null.deviance=metrics$null.deviance, 
-                         aic=metrics$aic, accuracy=metrics$accuracy, sensitivity=metrics$sensitivity, specificity=metrics$specificity, precision=metrics$precision)
+  if (output) plot(roc(results$target.class,glm.probs), print.auc = TRUE)
+  model.df <- tibble(id=id, res.deviance=metrics$res.deviance, null.deviance=metrics$null.deviance, 
+                         aic=metrics$aic, accuracy=metrics$accuracy, sensitivity=metrics$sensitivity, specificity=metrics$specificity)
   model.list <- list(model=glm.fit, df_info=model.df)
   return(model.list)
 }
@@ -364,11 +364,63 @@ model.reduced <- step(model.null,
              data=mod2_data)
 ```
 
+
+```{r}
+m2a <- score_model('model.full', model.full, mod2_data, output = TRUE)
+m2a$df_info
+models.df <- rbind(models.df,m2a$df_info)
+```
+
 The summary output of the reduced model retains a number of statistically significant predictors. 
 
 ```{r}
-summary(model.reduced)
+m2b <- score_model('model.reduced', model.reduced, mod2_data, output = TRUE)
+m2b$df_info
+models.df <- rbind(models.df,m2b$df_info)
 ```
+
+
+```{r}
+#summary(model.reduced)
+```
+
+```{r}
+mod2_data_bal <- data_train_balanced %>% select(-c('TARGET_AMT','INDEX'))
+
+modelbal.null <- glm(TARGET_FLAG ~ 1,
+                 data=mod2_data_bal,
+                 family = binomial(link="logit")
+                 )
+
+modelbal.full <- glm(TARGET_FLAG ~ .,
+                 data=mod2_data_bal,
+                 family=binomial(link="logit")
+                 )
+    
+modelbal.reduced <- step(modelbal.null,
+              scope=list(upper=modelbal.full),
+             direction="both",
+             test="Chisq",
+             trace=0,
+             data=mod2_data_bal)
+
+```
+
+```{r}
+m2c <- score_model('modelbal.full', modelbal.full, mod2_data_bal, output = FALSE)
+m2c$df_info
+models.df <- rbind(models.df,m2c$df_info)
+
+m2d <- score_model('modelbal.reduced', modelbal.reduced, mod2_data_bal, output = FALSE)
+m2d$df_info
+models.df <- rbind(models.df,m2d$df_info)
+```
+
+
+```{r}
+models.df
+```
+
 
 We compute McFadden's pseudo R squared for logistic regression and we see that the difference between the full model and the reduced model is only marginal. We proceed with the smaller model.
 
@@ -390,9 +442,7 @@ probabilities <- predict(model.reduced, type = "response")
 numdata <- numdata %>%
   mutate(logit = log(probabilities/(1-probabilities))) %>%
   gather(key = "predictors", value = "predictor.value", -logit)
-```
 
-```{r}
 ggplot(numdata, aes(logit, predictor.value))+
   geom_point(size = 0.5, alpha = 0.5) +
   geom_smooth(method = "loess") + 
@@ -428,30 +478,23 @@ model.data %>%
   filter(abs(.std.resid) > 3)
 ```
 
+
+
+
 #### Multicollinearity
 
 MI: JOB, EDUCATION > 5 too high?
 
 ```{r}
-car::vif(model.reduced)
-```
-
-#### Prediction
-
-```{r}
-#glm.probs <- predict(model.reduced, type="response")
-glm.pred <- ifelse(probabilities > 0.5, 1, 0)
-results <- tibble(target=mod2_data$TARGET_FLAG, pred=glm.pred)
-results <- results %>%
-    mutate(pred.class = as.factor(pred), target.class = as.factor(target))
-  
-print(confusionMatrix(results$pred.class,results$target.class, positive = "1"))
+vif(model.reduced)
 ```
 
 
 ### Model 3: Penalized Logistic Model
 
 Since the basic model contained many predictor variables, we take a look at a penalized logistic regression model which imposes a penalty on the model for having too many predictors. We will indentify the best shrinkage factor `lambda` through cross validation with an 80%/20% train/test data partitioning. 
+
+We fit a lasso regression model (alpha=1) and plot the cross-validation error over the log of lambda. The number of predictors are shown on top and the vertical lines represent the optimal (minimal) value of lambda as well as the value of lambda which minimizes the number of predictors but still remains within 1 standard error of the optimal. We will consider models with both of these lamdba values.
 
 ```{r}
 # Prepare the data
@@ -468,16 +511,13 @@ test.data <- mod3_data[-training.samples, ]
 x <- model.matrix(TARGET_FLAG~., train.data)[,-1]
 # Convert the outcome (class) to a numerical variable
 y <- train.data$TARGET_FLAG
-```
 
-We fit a lasso regression model (alpha=1) and plot the cross-validation error over the log of lambda. The number of predictors are shown on top and the vertical lines represent the optimal (minimal) value of lambda as well as the value of lambda which minimizes the number of predictors but still remains within 1 standard error of the optimal. We will consider models with both of these lamdba values.
-
-```{r}
 # Find the best lambda using cross-validation
 set.seed(42) 
 cv.lasso <- cv.glmnet(x, y, alpha = 1, family = "binomial")
 plot(cv.lasso)
 ```
+
 
 ```{r}
 paste0('lambda.min = ',cv.lasso$lambda.min)
@@ -507,7 +547,7 @@ probabilities <- lasso.model.min %>% predict(newx = x.test)
 predicted.classes <- as.factor(ifelse(probabilities > 0.5, 1, 0))
 # Model accuracy rate
 observed.classes <- as.factor(test.data$TARGET_FLAG)
-#mean(predicted.classes == observed.classes)
+mean(predicted.classes == observed.classes)
 print(confusionMatrix(predicted.classes,observed.classes, positive = "1"))
 ```
 
@@ -524,6 +564,10 @@ observed.classes <- as.factor(test.data$TARGET_FLAG)
 #mean(predicted.classes == observed.classes)
 print(confusionMatrix(predicted.classes,observed.classes, positive = "1"))
 ```
+
+
+
+## Model Building - Mutiple Regression Models {.tabset .tabset-fade .tabset-pills}
 
 #### Predicting TARGET_AMT
 
