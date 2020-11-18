@@ -15,41 +15,30 @@ output:
     df_print: paged
 ---
 
+## Dataset
 
+For this project, we propose to explore the mushroom dataset from the UCI Machine Learning Repository hosted on [Kaggle](https://www.kaggle.com/uciml/mushroom-classification?select=mushrooms.csv). 
+
+The task is to accurately classify mushrooms as either edible or poisonous based on the 13 available features. 
+
+This could be treated as a binary logistic problem where we model classify mushrooms as edible=0 or poisonous=1. 
 
 ## Abstract {.tabset .tabset-fade .tabset-pills}
 
-
-
 ## Keywords {.tabset .tabset-fade .tabset-pills}
-
-
 
 ## Introduction {.tabset .tabset-fade .tabset-pills}
 
-
-
 ## Literature Review {.tabset .tabset-fade .tabset-pills}
-
-
 
 ## Methodology {.tabset .tabset-fade .tabset-pills}
 
-
-
 ## Experimentation and Results {.tabset .tabset-fade .tabset-pills}
-
-TBD
 
 ## Discussion and Conclusion {.tabset .tabset-fade .tabset-pills}
 
-TBD
-
 ## References {.tabset .tabset-fade .tabset-pills}
-
-TBD
 
 ## Appendices {.tabset .tabset-fade .tabset-pills}
 
-TBD
 
