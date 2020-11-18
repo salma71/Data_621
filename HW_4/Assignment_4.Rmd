@@ -39,6 +39,7 @@ library(pROC)
 library(broom)
 library(car)
 library(jtools)
+library(MASS)
 ```
 
 ```{r message=FALSE, warning=FALSE}
@@ -646,7 +647,17 @@ mean(predicted.classes == observed.classes)
 ```
 
 
-### Model 4: 
+### Model 4: Weighted Least Squares
+```{r}
+lm4 <- lm(TARGET_AMT ~. -INDEX -TARGET_FLAG, data = data_train)
+summary(lm4)
+sd <- 1 / lm(abs(lm4$residuals)~lm4$fitted.values)$fitted.values^2
+lm4_wls <- lm(TARGET_AMT ~. -INDEX -TARGET_FLAG, data = data_train, weights = sd)
+
+lm4_wls_step <- stepAIC(lm4_wls, method = "leapBackward", trace = FALSE)
+summary(lm4_wls_step)
+plot(lm4_wls_step)
+```
 
 
 ## Model Selection 
