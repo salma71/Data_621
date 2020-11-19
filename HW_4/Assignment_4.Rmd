@@ -156,7 +156,7 @@ We now explore the distribution of `TARGET_FLAG` across the numeric variables. W
 plot_vars <- c("TARGET_FLAG", names(keep(data_train, is.numeric)))
 
 data_train[plot_vars] %>%
-  select(-INDEX, -TARGET_AMT) %>%
+  dplyr::select(-INDEX, -TARGET_AMT) %>%
   gather(variable, value, -TARGET_FLAG) %>%
   ggplot(., aes(TARGET_FLAG, value, color=TARGET_FLAG)) + 
   geom_boxplot() +
@@ -170,7 +170,7 @@ data_train[plot_vars] %>%
 
 ```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 data_train %>% 
-  select(-TARGET_FLAG, -TARGET_AMT, -INDEX) %>%
+  dplyr::select(-TARGET_FLAG, -TARGET_AMT, -INDEX) %>%
   keep(is.numeric) %>%
   gather() %>% 
   ggplot(aes(x= value)) + 
@@ -183,7 +183,7 @@ The variables dislayed below need scale transformations like `OLDCLAIM`, `INCOME
 
 ```{r variables_distribution2, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 data_train %>% 
-  select(OLDCLAIM, INCOME, BLUEBOOK, HOME_VAL) %>%
+  dplyr::select(OLDCLAIM, INCOME, BLUEBOOK, HOME_VAL) %>%
   gather() %>% 
   ggplot(aes(x= value)) + 
   geom_histogram(fill='pink') + 
@@ -344,7 +344,7 @@ score_model <- function(id, model, data, output=FALSE) {
 We construct null, full and reduced models. The reduced model is created via stepwise regression.
 
 ```{r}
-mod2_data <- data_train %>% select(-c('TARGET_AMT','INDEX'))
+mod2_data <- data_train %>% dplyr::select(-c('TARGET_AMT','INDEX'))
 #mod2_data <- data_train_balanced %>% select(-c('TARGET_AMT','INDEX'))
 
 model.null <- glm(TARGET_FLAG ~ 1,
@@ -386,7 +386,7 @@ models.df <- rbind(models.df,m2b$df_info)
 ```
 
 ```{r}
-mod2_data_bal <- data_train_balanced %>% select(-c('TARGET_AMT','INDEX'))
+mod2_data_bal <- data_train_balanced %>% dplyr::select(-c('TARGET_AMT','INDEX'))
 
 modelbal.null <- glm(TARGET_FLAG ~ 1,
                  data=mod2_data_bal,
@@ -501,7 +501,7 @@ We fit a lasso regression model (alpha=1) and plot the cross-validation error ov
 # Prepare the data
 library(glmnet)
 
-mod3_data <- data_train %>% select(-c('TARGET_AMT','INDEX'))
+mod3_data <- data_train %>% dplyr::select(-c('TARGET_AMT','INDEX'))
 
 # Split the data into training and test set
 set.seed(42)
@@ -573,7 +573,7 @@ print(confusionMatrix(predicted.classes,observed.classes, positive = "1"))
 #### Predicting TARGET_AMT
 
 ```{r}
-data_train2 <- data_train %>% select(c(-'INDEX')) %>% filter(TARGET_FLAG==1) %>% select(-c('TARGET_FLAG'))
+data_train2 <- data_train %>% dplyr::select(c(-'INDEX')) %>% filter(TARGET_FLAG==1) %>% dplyr::select(-c('TARGET_FLAG'))
 ```
 
 ```{r}
