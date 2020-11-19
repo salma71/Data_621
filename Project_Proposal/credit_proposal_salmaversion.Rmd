@@ -1,0 +1,57 @@
+---
+title: "Data 621 - Final Project Proposal"
+author: "Dhairav Chhatbar, Mael Illien, Salma Elshahawy"
+date: "11/17/2020"
+output: 
+  html_document:
+    code_folding: hide
+    theme: cosmo
+    highlight: tango
+    toc: true
+    number_section: false
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    df_print: paged
+---
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
+library(skimr)
+```
+
+## Dataset
+
+For this project, we propose to explore the Default of Credit Card Clients Data Set from the UCI Machine Learning Repository hosted on [Kaggle](https://www.kaggle.com/uciml/default-of-credit-card-clients-dataset?select=UCI_Credit_Card.csv). This dataset contains information on default payments, demographic factors, credit data, history of payment, and bill statements of credit card clients in Taiwan from April 2005 to September 2005.
+
+The dataset has around ~30,000 observations and 25 columns. The variables are as the following:
+
+```{r}
+dataset = read_csv('')
+skim(dataset)
+```
+
+
+## Abstract
+
+ - The goal of this project is to estimate the propability of default payment by credit card history. 
+ - Use the advanced techniques of classification to predict if a client has high probability for a default. 
+ - To investigate if there is a trend for a default between the time that the dataset was collected.
+ 
+## Introduction
+
+For this dataset, we are intending to develop a statistical model for probabilty of default, how many clients already neen defaulted. Additionally, we would create exhaustive visualizations between dependent variable and the independent variables ,where we can infer the correlations between variables. In addition investigate the variables distributions to select the best classifer. 
+
+Based on the previous step, we would start our data preprocessing and cleaning to prepare the data for modeling. We would approach the least distructive preprocessing methods to preserve variables distributions to make the model as reliable as we can. 
+
+After that, we would extend our work by building a several classifers using different feature selection techniques then derive the performance metrics for each model. Finally, we would select model with the best performance and create predictions based on it. 
+
+
+## Acknowledgements
+
+Lichman, M. (2013). (UCI Machine Learning Repository)[http://archive.ics.uci.edu/ml]. Irvine, CA: University of California, School of Information and Computer Science.
+
+The original dataset can be found here at the UCI Machine Learning Repository.
+
+
+
