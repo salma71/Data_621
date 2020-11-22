@@ -1,0 +1,75 @@
+---
+title: "Data 621 - Final Project Proposal"
+author: "Dhairav Chhatbar, Mael Illien, Salma Elshahawy"
+date: "11/17/2020"
+output: 
+  html_document:
+    code_folding: hide
+    theme: cosmo
+    highlight: tango
+    toc: true
+    number_section: false
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    df_print: paged
+---
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
+library(skimr)
+library(readr)
+library(kableExtra)
+library(dplyr)
+```
+
+
+## Proposal
+
+For the Final Project we look to analyze and predict the outcome of stocks based on historical stock end of trading day data for 30 companies on the Dow Jones Industrial Average. For each company there is 5 years of historical trading data up to February 2019. From a methodology standpoint we will explore modeling techniques as part of this course such as linear, binomial, and panel modeling, but also modeling techniques outside of the scope of the course such as time series forecasting using auto regressive modeling. The goal will be to predict the outcome of stock prices in either absolute returns or positive or negative closings depending on the model
+
+
+## Dataset
+
+For this project, we propose to explore the Dow Jones Industrial Average dataset hosted on [Kaggle](https://www.kaggle.com/timoboz/stock-data-dow-jones). 
+
+The dataset has around ~36,000 observations on 30 companies. The variables are as the following:
+
+
+
+
+```{r message=FALSE, warning=FALSE}
+dataset <- read_csv('https://raw.githubusercontent.com/salma71/Data_621/master/Project_Proposal/stocks_combined.csv')
+tickers <- read_csv('https://raw.githubusercontent.com/salma71/Data_621/master/Project_Proposal/tickers.csv')
+skim(dataset)
+```
+
+The variables description are as follows:
+
+| Variable          | Description                                                                                                                                                                         
+|-------------------|---------------------------
+| date              | Trading Date                                                                                             
+| open              | Price of the stock at market open                                                                                                                                                              
+| high              | Highest price reached in the trade day                                                                                                     
+| low               | Lowest price reached in the trade day                                                                                                      
+| close             | Price of the stock at market close      
+| volume            | Number of shares traded 	
+| unadjustedVolume  | Volume for stocks, unadjusted by stock splits                                                                                                                      
+| change           	| Change in closing price from prior trade day close                                                                                                                       
+| changePercent     | Percentage change in closing price from prior trade day close                                                                                                                      
+| vwap              | Volume weighted average price (VWAP) is the ratio of the value traded to total volume traded                                                                                                          
+| label           	| Trading Date                                                                                                                       
+| changeOverTime    | Percent change of each interval relative to first value. Useful for comparing multiple stocks.                                                                                                                         
+| ticker            | Abbreviation used to uniquely identify publicly traded shares
+
+
+The companies included in the dataset are:
+```{r}
+tickers %>% kableExtra::kable()%>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE, position = "left")
+```
+
+
+## Acknowledgements
+
+The original dataset can be found here at the (EOD data for all Dow Jones stocks)[https://www.kaggle.com/timoboz/stock-data-dow-jones].
