@@ -193,7 +193,7 @@ data_train %>%
 ```{r fig.height=10, fig.width=10}
 data_train %>%
   keep(is.numeric) %>%
-  gather(variable, value, -TARGET_AMT, -INDEX, -CLM_FREQ, -HOMEKIDS, -KIDSDRIV, -MVR_PTS) %>%
+  gather(variable, value, -TARGET_AMT, -INDEX, -CLM_FREQ, -MVR_PTS) %>%
   ggplot(., aes(value, TARGET_AMT)) + 
   geom_point() +
   scale_color_brewer(palette="Set1") +
@@ -298,6 +298,8 @@ table(over_sample_train$TARGET_FLAG)
 
 ## Model Building - Logit Models {.tabset .tabset-fade .tabset-pills}
 
+Our objective is to predict both `TARGET_FLAG` and `TARGET_AMT`. `TARGET_FLAG` is a discrete response variable and for that reason it should be modeled using logistic regression which determines the probability that an individual will be in an accident.
+
 ```{r}
 # Initialize a df that will store the metrics of models
 models.df <- tibble(id=character(), formula=character(), res.deviance=numeric(), null.deviance=numeric(),
@@ -341,8 +343,7 @@ score_model <- function(id, model, data, output=FALSE) {
 
 ### Model 2: Basic Logit Models
 
-We construct null, full and reduced models. The reduced model is created via stepwise regression.
-
+We construct null, full and reduced models. The null model contains only the intercept and forms the lower bound of complexity. The full model contains all predictors and is the upper bound, max complexity model. The reduced model is obtained by iteratively stepping through the predictors between the aforementioned bounds until only statistically significant predictors remain.
 ```{r}
 mod2_data <- data_train %>% dplyr::select(-c('TARGET_AMT','INDEX'))
 #mod2_data <- data_train_balanced %>% select(-c('TARGET_AMT','INDEX'))
@@ -423,7 +424,7 @@ models.df
 ```
 
 
-We compute McFadden's pseudo R squared for logistic regression and we see that the difference between the full model and the reduced model is only marginal. We proceed with the smaller model.
+We compute McFadden's pseudo R squared for logistic regression and we see that the difference between the full model and the reduced model is only marginal. We proceed with the smaller model with hopes of reducing variances at the expense of introducing a bit a bias.
 
 ```{r}
 paste0('Full model = ',round(1-logLik(model.full)/logLik(model.null),4))
@@ -431,6 +432,8 @@ paste0('Reduced model = ',round(1-logLik(model.reduced)/logLik(model.null),4))
 ```
 
 #### Diagnotics
+
+We diagnose the reduced model for irregularities and violations of assumptions.
 
 ```{r}
 library(broom)
@@ -453,13 +456,11 @@ ggplot(numdata, aes(logit, predictor.value))+
 
 #### Influential Values
 
-Inspect the influential values
+Inspection the influential values reveals 3 observations of interest, all which have higher degrees and high bluebook values, except for sports car and a lower bluebook value.
 
 ```{r}
 plot(model.reduced, which = 4, id.n = 3)
-```
 
-```{r}
 model.data <- augment(model.reduced) %>% 
   mutate(index = 1:n())
 
@@ -468,7 +469,7 @@ model.data %>% top_n(3, .cooksd)
 
 #### Outliers
 
-Only one outlier. Consider removing?
+Only one outlier is identified. Consider removing?
 
 ```{r}
 ggplot(model.data, aes(index, .std.resid)) + 
@@ -479,19 +480,17 @@ model.data %>%
   filter(abs(.std.resid) > 3)
 ```
 
-
-
-
 #### Multicollinearity
 
-MI: JOB, EDUCATION > 5 too high?
+Looking into the multicollinearity, we see that the categorical variables `JOB` and `EDUCATION` are values greater than 5. These are categorical and therefore add degrees of freedom. We will remove them to compare the results but also consider penalized models to deal with multicollinearity.
 
 ```{r}
-vif(model.reduced)
+car::vif(model.reduced)
 ```
 
+### Model 2B: 
 
-### Model 3: Penalized Logistic Model
+### Model 3A: Penalized Logistic Model
 
 Since the basic model contained many predictor variables, we take a look at a penalized logistic regression model which imposes a penalty on the model for having too many predictors. We will indentify the best shrinkage factor `lambda` through cross validation with an 80%/20% train/test data partitioning. 
 
@@ -566,11 +565,11 @@ observed.classes <- as.factor(test.data$TARGET_FLAG)
 print(confusionMatrix(predicted.classes,observed.classes, positive = "1"))
 ```
 
-
-
 ## Model Building - Mutiple Regression Models {.tabset .tabset-fade .tabset-pills}
 
 #### Predicting TARGET_AMT
+
+###
 
 ```{r}
 data_train2 <- data_train %>% dplyr::select(c(-'INDEX')) %>% filter(TARGET_FLAG==1) %>% dplyr::select(-c('TARGET_FLAG'))
@@ -579,71 +578,6 @@ data_train2 <- data_train %>% dplyr::select(c(-'INDEX')) %>% filter(TARGET_FLAG=
 ```{r}
 lm5 <- lm(TARGET_AMT ~ ., data_train2)
 summary(lm5)
-```
-
-```{r}
-# Split the data into training and test set
-set.seed(42)
-training.samples <- data_train2$TARGET_AMT %>% createDataPartition(p = 0.8, list = FALSE)
-train.data <- data_train2[training.samples, ]
-test.data <- data_train2[-training.samples, ]
-
-# Dummy code categorical predictor variables
-x <- model.matrix(TARGET_AMT~., train.data)[,-1]
-# Convert the outcome (class) to a numerical variable
-y <- train.data$TARGET_AMT
-
-```
-
-Fit lasso regression model (alpha=1).
-
-Plot of cross-validation error over the log of lambda displays the minimal value.
-
-```{r}
-set.seed(42)
-# Find the best lambda using cross-validation
-cv.lasso <- cv.glmnet(x, y, alpha = 0.1)
-plot(cv.lasso)
-```
-
-```{r}
-paste0('lambda.min = ',cv.lasso$lambda.min)
-paste0('lambda.1se = ',cv.lasso$lambda.1se) # gives the simplest model but also lies within one standard error of the optimal value of lambda
-```
-
-The columns below compare the variables that are dropped in the lasso regression for the optimal and smallest model lambdas.
-
-```{r}
-# Display regression coefficients
-c_min_lambda <- coef(cv.lasso, cv.lasso$lambda.min)
-c_1se_lambda <- coef(cv.lasso, cv.lasso$lambda.1se)
-cbind(c_min_lambda, c_1se_lambda)
-```
-
-```{r}
-# Final model with lambda.min
-lasso.model.min <- glmnet(x, y, alpha = 0.1,
-                      lambda = cv.lasso$lambda.min)
-# Make prediction on test data
-x.test <- model.matrix(TARGET_AMT ~., test.data)[,-1]
-probabilities <- lasso.model.min %>% predict(newx = x.test)
-predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
-# Model accuracy
-observed.classes <- test.data$TARGET_AMT
-mean(predicted.classes == observed.classes)
-```
-
-```{r}
-# Final model with lambda.1se
-lasso.model.se1 <- glmnet(x, y, alpha = 1,
-                      lambda = cv.lasso$lambda.1se)
-# Make prediction on test data
-x.test <- model.matrix(TARGET_AMT ~., test.data)[,-1]
-probabilities <- lasso.model.se1 %>% predict(newx = x.test)
-predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
-# Model accuracy rate
-observed.classes <- test.data$TARGET_AMT
-mean(predicted.classes == observed.classes)
 ```
 
 
@@ -657,6 +591,9 @@ lm4_wls <- lm(TARGET_AMT ~. -INDEX -TARGET_FLAG, data = data_train, weights = sd
 lm4_wls_step <- stepAIC(lm4_wls, method = "leapBackward", trace = FALSE)
 summary(lm4_wls_step)
 plot(lm4_wls_step)
+```
+
+```{r}
 ```
 
 
