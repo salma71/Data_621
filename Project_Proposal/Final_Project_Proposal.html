@@ -2954,12 +2954,11 @@ div.tocify {
 
 <div id="proposal" class="section level2">
 <h2>Proposal</h2>
-<p>For the Final Project we look to analyze and predict the outcome of stocks based on historical stock end of trading day data for 30 companies on the Dow Jones Industrial Average. For each company there is 5 years of historical trading data up to February 2019. From a methodology standpoint we will explore modeling techniques as part of this course such as linear, binomial, and panel modeling, but also modeling techniques outside of the scope of the course such as time series forecasting using auto regressive modeling. The goal will be to predict the outcome of stock prices in either absolute returns or positive or negative closings depending on the model</p>
+<p>For the Final Project we look to analyze and predict the outcome of stocks based on historical end of trading day data for 30 companies on the Dow Jones Industrial Average. For each company there is 5 years of historical trading data up to February 2019. From a methodology standpoint we will explore modeling techniques as part of this course such as linear, binomial, and panel modeling, and also modeling techniques outside of the scope of the course such as time series forecasting using auto regressive modeling. The goal will be to predict the outcome of stock prices in either absolute returns or positive/negative closings depending on the selected model</p>
 </div>
 <div id="dataset" class="section level2">
 <h2>Dataset</h2>
-<p>For this project, we propose to explore the Dow Jones Industrial Average dataset hosted on <a href="https://www.kaggle.com/timoboz/stock-data-dow-jones">Kaggle</a>.</p>
-<p>The dataset has around ~36,000 observations on 30 companies. The variables are as the following:</p>
+<p>A quick summary of the data set hosted on <a href="https://www.kaggle.com/timoboz/stock-data-dow-jones">Kaggle</a>, shows that for the given 30 publicly traded companies, there are approximately 36,000 observations. The variables accompanying this data are as the following:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a>dataset &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&#39;https://raw.githubusercontent.com/salma71/Data_621/master/Project_Proposal/stocks_combined.csv&#39;</span>)</span>
 <span id="cb1-2"><a href="#cb1-2"></a>tickers &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&#39;https://raw.githubusercontent.com/salma71/Data_621/master/Project_Proposal/tickers.csv&#39;</span>)</span>
 <span id="cb1-3"><a href="#cb1-3"></a><span class="kw">skim</span>(dataset)</span></code></pre></div>
