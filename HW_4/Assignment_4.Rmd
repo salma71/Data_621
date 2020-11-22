@@ -339,22 +339,20 @@ score_model <- function(id, model, data, output=FALSE) {
 }
 ```
 
-### Model 1: 
-
-### Model 2: Basic Logit Models
+### Model 1 A&B: Logit Models
 
 We construct null, full and reduced models. The null model contains only the intercept and forms the lower bound of complexity. The full model contains all predictors and is the upper bound, max complexity model. The reduced model is obtained by iteratively stepping through the predictors between the aforementioned bounds until only statistically significant predictors remain.
 ```{r}
-mod2_data <- data_train %>% dplyr::select(-c('TARGET_AMT','INDEX'))
-#mod2_data <- data_train_balanced %>% select(-c('TARGET_AMT','INDEX'))
+mod1data <- data_train %>% dplyr::select(-c('TARGET_AMT','INDEX'))
+#mod1data <- data_train_balanced %>% select(-c('TARGET_AMT','INDEX'))
 
 model.null <- glm(TARGET_FLAG ~ 1,
-                 data=mod2_data,
+                 data=mod1data,
                  family = binomial(link="logit")
                  )
 
 model.full <- glm(TARGET_FLAG ~ .,
-                 data=mod2_data,
+                 data=mod1data,
                  family = binomial(link="logit")
                  )
     
@@ -363,22 +361,19 @@ model.reduced <- step(model.null,
              direction="both",
              test="Chisq",
              trace=0,
-             data=mod2_data)
-```
+             data=mod1data)
 
-
-```{r}
-m2a <- score_model('model.full', model.full, mod2_data, output = TRUE)
-m2a$df_info
-models.df <- rbind(models.df,m2a$df_info)
+m1a <- score_model('model.full', model.full, mod1data, output = TRUE)
+m1a$df_info
+models.df <- rbind(models.df,m1a$df_info)
 ```
 
 The summary output of the reduced model retains a number of statistically significant predictors. 
 
 ```{r}
-m2b <- score_model('model.reduced', model.reduced, mod2_data, output = TRUE)
-m2b$df_info
-models.df <- rbind(models.df,m2b$df_info)
+m1b <- score_model('model.reduced', model.reduced, mod1data, output = TRUE)
+m1b$df_info
+models.df <- rbind(models.df,m1b$df_info)
 ```
 
 
@@ -386,45 +381,7 @@ models.df <- rbind(models.df,m2b$df_info)
 #summary(model.reduced)
 ```
 
-```{r}
-mod2_data_bal <- data_train_balanced %>% dplyr::select(-c('TARGET_AMT','INDEX'))
-
-modelbal.null <- glm(TARGET_FLAG ~ 1,
-                 data=mod2_data_bal,
-                 family = binomial(link="logit")
-                 )
-
-modelbal.full <- glm(TARGET_FLAG ~ .,
-                 data=mod2_data_bal,
-                 family=binomial(link="logit")
-                 )
-    
-modelbal.reduced <- step(modelbal.null,
-              scope=list(upper=modelbal.full),
-             direction="both",
-             test="Chisq",
-             trace=0,
-             data=mod2_data_bal)
-
-```
-
-```{r}
-m2c <- score_model('modelbal.full', modelbal.full, mod2_data_bal, output = FALSE)
-m2c$df_info
-models.df <- rbind(models.df,m2c$df_info)
-
-m2d <- score_model('modelbal.reduced', modelbal.reduced, mod2_data_bal, output = FALSE)
-m2d$df_info
-models.df <- rbind(models.df,m2d$df_info)
-```
-
-
-```{r}
-models.df
-```
-
-
-We compute McFadden's pseudo R squared for logistic regression and we see that the difference between the full model and the reduced model is only marginal. We proceed with the smaller model with hopes of reducing variances at the expense of introducing a bit a bias.
+We compute McFadden's pseudo R squared for logistic regression and we see that the difference between the full model and the reduced model is only marginal. 
 
 ```{r}
 paste0('Full model = ',round(1-logLik(model.full)/logLik(model.null),4))
@@ -433,12 +390,12 @@ paste0('Reduced model = ',round(1-logLik(model.reduced)/logLik(model.null),4))
 
 #### Diagnotics
 
-We diagnose the reduced model for irregularities and violations of assumptions.
+We diagnose the reduced model for irregularities and violations of assumptions. The resulting logit values for the continuous predictors look mostly linear. 
 
 ```{r}
 library(broom)
 # Select only numeric predictors and predict
-numdata <- mod2_data %>%
+numdata <- mod1data %>%
   dplyr::select_if(is.numeric)
 predictors <- colnames(numdata)
 probabilities <- predict(model.reduced, type = "response")
@@ -469,7 +426,7 @@ model.data %>% top_n(3, .cooksd)
 
 #### Outliers
 
-Only one outlier is identified. Consider removing?
+Only one outlier is identified which we will consider removing in a subsequent model.
 
 ```{r}
 ggplot(model.data, aes(index, .std.resid)) + 
@@ -488,9 +445,84 @@ Looking into the multicollinearity, we see that the categorical variables `JOB` 
 car::vif(model.reduced)
 ```
 
-### Model 2B: 
+### Model 1 C&D: Balanced Data
 
-### Model 3A: Penalized Logistic Model
+As a comparison, we make use of the balance dataset assembled earlier. We compute both the full and reduced models and store the metrics in the summary dataframe. 
+
+```{r}
+mod1data_bal <- data_train_balanced %>% dplyr::select(-c('TARGET_AMT','INDEX'))
+
+modelbal.null <- glm(TARGET_FLAG ~ 1,
+                 data=mod1data_bal,
+                 family = binomial(link="logit")
+                 )
+
+modelbal.full <- glm(TARGET_FLAG ~ .,
+                 data=mod1data_bal,
+                 family=binomial(link="logit")
+                 )
+    
+modelbal.reduced <- step(modelbal.null,
+              scope=list(upper=modelbal.full),
+             direction="both",
+             test="Chisq",
+             trace=0,
+             data=mod1data_bal)
+
+m1c <- score_model('modelbal.full', modelbal.full, mod1data_bal, output = FALSE)
+models.df <- rbind(models.df,m1c$df_info)
+m1d <- score_model('modelbal.reduced', modelbal.reduced, mod1data_bal, output = FALSE)
+models.df <- rbind(models.df,m1d$df_info)
+```
+
+### Model 1 E&F: Influential and Outlying Observations Removed
+
+Here we model using the previous methods but discard the influential observations as well as the outlier. 
+
+```{r}
+mod1data_rmv <- data_train %>% filter(!INDEX %in% c(3722, 3592, 4690, 4742)) %>% dplyr::select(-c('TARGET_AMT','INDEX')) 
+
+modelrmv.null <- glm(TARGET_FLAG ~ 1,
+                 data=mod1data_rmv,
+                 family = binomial(link="logit")
+                 )
+
+modelrmv.full <- glm(TARGET_FLAG ~ .,
+                 data=mod1data_rmv,
+                 family=binomial(link="logit")
+                 )
+    
+modelrmv.reduced <- step(modelrmv.null,
+              scope=list(upper=modelrmv.full),
+             direction="both",
+             test="Chisq",
+             trace=0,
+             data=mod1data_rmv)
+
+m1e <- score_model('modelrmv.full', modelrmv.full, mod1data_rmv, output = FALSE)
+models.df <- rbind(models.df,m1e$df_info)
+m1f <- score_model('modelrmv.reduced', modelrmv.reduced, mod1data_rmv, output = FALSE)
+models.df <- rbind(models.df,m1f$df_info)
+```
+
+### Model 1: Summary
+
+Finally we consider the results of these models. The models are of fairly comparable performance. The models using the balanced data lose in accuracy and specificity but gain in sensitivity For the other models, the metrics are comparable. The model `modelrmv.reduced` has the smaller AIC overall but the full version actually has a slightly higher R squared. We proceed with the smaller model with hopes of reducing variances at the expense of introducing a bit a bias.
+
+```{r}
+models.df
+
+paste0('Full model  = ',round(1-logLik(model.full)/logLik(model.null),4))
+paste0('Reduced model  = ',round(1-logLik(model.reduced)/logLik(model.null),4))
+
+paste0('Full model (bal) = ',round(1-logLik(modelbal.full)/logLik(modelbal.null),4))
+paste0('Reduced model (bal) = ',round(1-logLik(modelrmv.reduced)/logLik(modelrmv.null),4))
+
+paste0('Full model (rmv) = ',round(1-logLik(modelbal.full)/logLik(modelbal.null),4))
+paste0('Reduced model (rmv) = ',round(1-logLik(modelrmv.reduced)/logLik(modelrmv.null),4))
+```
+
+### Model 2A: Penalized Logistic Model
 
 Since the basic model contained many predictor variables, we take a look at a penalized logistic regression model which imposes a penalty on the model for having too many predictors. We will indentify the best shrinkage factor `lambda` through cross validation with an 80%/20% train/test data partitioning. 
 
@@ -500,20 +532,19 @@ We fit a lasso regression model (alpha=1) and plot the cross-validation error ov
 # Prepare the data
 library(glmnet)
 
-mod3_data <- data_train %>% dplyr::select(-c('TARGET_AMT','INDEX'))
+mod2_data <- data_train %>% dplyr::select(-c('TARGET_AMT','INDEX'))
 
 # Split the data into training and test set
 set.seed(42)
-training.samples <- mod3_data$TARGET_FLAG %>% createDataPartition(p = 0.8, list = FALSE)
-train.data <- mod3_data[training.samples, ]
-test.data <- mod3_data[-training.samples, ]
+training.samples <- mod2_data$TARGET_FLAG %>% createDataPartition(p = 0.8, list = FALSE)
+train.data <- mod2_data[training.samples, ]
+test.data <- mod2_data[-training.samples, ]
 # Dummy code categorical predictor variables
 x <- model.matrix(TARGET_FLAG~., train.data)[,-1]
 # Convert the outcome (class) to a numerical variable
 y <- train.data$TARGET_FLAG
 
 # Find the best lambda using cross-validation
-set.seed(42) 
 cv.lasso <- cv.glmnet(x, y, alpha = 1, family = "binomial")
 plot(cv.lasso)
 ```
@@ -535,7 +566,7 @@ cbind(c_min_lambda, c_1se_lambda)
 
 #### Predicting TARGET_FLAG
 
-When comparing the accurancy of the two lasso penalized models, we see that the difference in accuracy is marginal.
+When comparing the accurancy of the two lasso penalized models, we see that the difference in accuracy is marginal and slightly lower that the simple logit models. For this reason, our selected best model will be the reduced model with influential observations and outliers removed.
 
 ```{r}
 # Final model with lambda.min
@@ -569,19 +600,37 @@ print(confusionMatrix(predicted.classes,observed.classes, positive = "1"))
 
 #### Predicting TARGET_AMT
 
-###
+We subset the dataset to pick out only the observations which were involved in accidents. This is also the population that has previously filed claims, so this information will be used to predict the `TARGET_AMT`.
+
+### Model 3 A&B: Multiple Regression
+
+The simple multiple regression model delivers a poor performance with a very low R-squared value. For this reason, we consider the next model using weights as a comparison. 
 
 ```{r}
 data_train2 <- data_train %>% dplyr::select(c(-'INDEX')) %>% filter(TARGET_FLAG==1) %>% dplyr::select(-c('TARGET_FLAG'))
+mod3a <- lm(TARGET_AMT ~ ., data_train2)
+summary(mod3a)
 ```
+
+We build the reduced model as before and output the summary. The Adjusted R-squared remains very low at 1.8%. The diagnostic QQ plot reveals a large deviation from normal in the upper quantiles that heavily affects the results.  
 
 ```{r}
-lm5 <- lm(TARGET_AMT ~ ., data_train2)
-summary(lm5)
+modeltgt.null <- lm(TARGET_AMT ~ 1, data=data_train2)
+modeltgt.full <- lm(TARGET_AMT ~ ., data=data_train2)
+modeltgt.reduced <- step(modeltgt.null,
+              scope=list(upper=modeltgt.full),
+             direction="both",
+             trace=0,
+             data=data_train2)
+
+summary(modeltgt.reduced)
+plot(modeltgt.reduced)
 ```
 
-
 ### Model 4: Weighted Least Squares
+
+We explore a weighted least squares model hoping for a better performance and manage to get a bump up 6.8%. We see that compared to the previous model the upper range of the QQ plot rapidly increases.
+
 ```{r}
 lm4 <- lm(TARGET_AMT ~. -INDEX -TARGET_FLAG, data = data_train)
 summary(lm4)
@@ -593,11 +642,19 @@ summary(lm4_wls_step)
 plot(lm4_wls_step)
 ```
 
-```{r}
-```
-
 
 ## Model Selection 
 
+We use the final selected models to make the predictions and write the results to file. To predict `TARGET_FLAG` we use `modelrmv.reduced` and the WLS model for `TARGET_AMT`. Once the individuals who are predicted to have accidents are identified, we filter them and predict the amount of that subset. 
 
----
+```{r}
+eval_probs <- predict(modelrmv.reduced, newdata=data_test %>% dplyr::select(-INDEX, -TARGET_AMT), type='response')
+data_test$TARGET_FLAG <- ifelse(eval_probs > 0.5, 1, 0)
+data_test$TARGET_AMT <- 0.0
+data_test[data_test$TARGET_FLAG == 1,]$TARGET_AMT <- predict(lm4_wls_step, newdata=data_test %>% filter(TARGET_FLAG==1) %>% dplyr::select(-c('TARGET_FLAG','INDEX')))
+
+data_test
+
+write.csv(data_test, "data_test_results.csv")
+```
+
