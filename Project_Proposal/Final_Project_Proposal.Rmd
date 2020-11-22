@@ -26,13 +26,14 @@ library(dplyr)
 
 ## Proposal
 
-For the Final Project we look to analyze and predict the outcome of stocks based on historical OHLCV (open, low, high, close, volume) stock data for 30 companies on the Dow Jones Industrial Average. For each company there is 5 years of historical trading data up to February 2019. From a methodology standpoint we will explore modeling techniques as part of this course such as linear, binomial, and panel modeling, but also modeling techniques outside of the scope of the course such as time series forecasting using auto regressive modeling. The goal will be to predict the outcome of stock prices in either absolute returns or positive or negative closings depending on the model.
+For the Final Project, we intend to analyze and predict stocks' outcome based on the historical end of trading day data for 30 companies on the Dow Jones Industrial Average. For each company, there are five years of historical trading data up to February 2019. From a methodology standpoint, we will explore modeling techniques as part of this course, such as linear, binomial, and panel modeling, and modeling techniques outside of the course scope, such as time series forecasting using autoregressive modeling. The goal will be to predict the outcome of stock prices in either absolute returns or positive/negative closings depending on the selected model.
+
 
 ## Dataset
 
-For this project, we propose to explore the Dow Jones Industrial Average dataset hosted on [Kaggle](https://www.kaggle.com/timoboz/stock-data-dow-jones). 
+A quick summary of the data set hosted on [Kaggle](https://www.kaggle.com/timoboz/stock-data-dow-jones), shows that for the given 30 publicly traded companies, there are approximately 36,000 observations. The variables accompanying this data are as the following:
 
-The dataset has around ~36,000 observations on 30 companies. The variables are as the following:
+
 
 
 ```{r message=FALSE, warning=FALSE}
