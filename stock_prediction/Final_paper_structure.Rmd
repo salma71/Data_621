@@ -1,5 +1,5 @@
 ---
-title: Determining Factors Influencing House Sale Prices
+title: Predicting the Stock Prices 
 author: | 
         | **Dhairav Chhatbar, Mael Illien, Salma Elshahawy**
         | DATA 621, Master of Science in Data Science,
