@@ -1,0 +1,87 @@
+---
+title: "Data 621 - Homework 3"
+author: "Dhairav Chhatbar, Mael Illien, Salma Elshahawy"
+date: "11/23/2020"
+output: 
+  html_document:
+    code_folding: hide
+    theme: cosmo
+    highlight: tango
+    toc: true
+    number_section: false
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    df_print: paged
+---
+# Data 621 Homework5 
+
+## Introduction 
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
+library(skimr)
+library(ggcorrplot)
+library(tidyverse)
+library(PerformanceAnalytics)
+library(DMwR)
+library(caret)
+library(kableExtra)
+library(DescTools)
+library(cowplot)
+library(pROC)
+library(broom)
+library(car)
+```
+
+```{r message=FALSE, warning=FALSE}
+data_train <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_5/wine-training-data.csv", header = TRUE)
+data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master/HW_5/wine-evaluation-data.csv", header = TRUE)
+```
+
+## Data Exploration {.tabset .tabset-fade .tabset-pills}
+
+### Data Exploration
+
+
+```{r data_summary_train, message=FALSE, warning=FALSE}
+skim(data_train)
+```
+
+---
+
+### Visualization
+
+
+#### Correlations with Response Variable
+
+
+## Data Preparation {.tabset .tabset-fade .tabset-pills}
+
+
+## Model Building {.tabset .tabset-fade .tabset-pills}
+
+### Model 1: Base Model
+
+### Model 2: Observation Removal
+
+## Model Selection 
+
+
+```{r}
+# data_test_trans <- data_test %>% select(-chas,-rm,-lstat)
+# test_predict <- predict(mt1$model, newdata=data_test_trans)
+# test_predict <- ifelse(test_predict<.5,0,1)
+# 
+# data_test$target <- test_predict
+# 
+# ggplot(data_test, aes(x=index(data_test), y=target, color=factor(target))) + geom_point() +
+#   labs(x="Observation", y="target", title = "Model mt1 Prediction", colour = "target")
+# 
+# table(test_predict)
+# 
+# write.csv(test_predict, "CrimePredictions.csv")
+
+```
+
