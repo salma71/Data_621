@@ -1,0 +1,89 @@
+---
+title: Determining Factors Influencing House Sale Prices
+author: | 
+        | **Dhairav Chhatbar, Mael Illien, Salma Elshahawy**
+        | DATA 621, Master of Science in Data Science,
+        | City University of New York
+output: 
+  pdf_document:
+    df_print: kable
+    toc: no
+    fig_caption: yes
+
+nocite: | 
+  @wickham_ggplot2_2009, @RCoreTeam, @Chang2015
+
+bibliography: citations.bib
+link-citations: yes
+---
+
+
+```{r options_pkgs, echo=F, warning=F, message=F, results=F}
+knitr::opts_chunk$set(error = F, message = F, # tidy = T,
+                      cache = T, warning = T, 
+                      results = 'hide', # suppress code output
+                      echo = F,         # suppress code
+                      fig.show = 'hide' # suppress plots
+                      )
+library(readr)
+library(skimr)
+library(knitcitations)
+library(pander)
+```
+
+# Abstract
+
+
+# Key Words
+
+
+# Introduction
+
+
+
+# Literature Review
+
+
+# Methodology
+
+### Data Description
+
+```{r message=FALSE, warning=FALSE}
+dataset <- read_csv('https://raw.githubusercontent.com/salma71/Data_621/master/Project_Proposal/stocks_combined.csv')
+tickers <- read_csv('https://raw.githubusercontent.com/salma71/Data_621/master/Project_Proposal/tickers.csv')
+skim(dataset)
+```
+
+### Data Imputation
+
+Example for citing @kulkarni_time_2020
+
+# Experimentation and Results
+
+
+# Discussion and Conclusion
+
+
+\newpage
+# Appendix A. Figures
+
+
+\newpage
+# Appendix B. Tables
+
+\newpage
+# Appendix C. Code
+
+```{r Code, echo=T, eval=F}
+install_load <- function(pkg){
+  # Load packages & Install them if needed.
+  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+  if (length(new.pkg)) install.packages(new.pkg, dependencies = TRUE)
+  sapply(pkg, require, character.only = TRUE, quietly = TRUE, warn.conflicts = FALSE)
+}
+```
+
+\newpage
+# References
+
+
