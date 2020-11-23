@@ -291,10 +291,6 @@ table(over_sample_train$TARGET_FLAG)
 
 ---
 
-### Influential Leverage Points
-
-
----
 
 ## Model Building - Logit Models {.tabset .tabset-fade .tabset-pills}
 
@@ -342,6 +338,7 @@ score_model <- function(id, model, data, output=FALSE) {
 ### Model 1 A&B: Logit Models
 
 We construct null, full and reduced models. The null model contains only the intercept and forms the lower bound of complexity. The full model contains all predictors and is the upper bound, max complexity model. The reduced model is obtained by iteratively stepping through the predictors between the aforementioned bounds until only statistically significant predictors remain.
+
 ```{r}
 mod1data <- data_train %>% dplyr::select(-c('TARGET_AMT','INDEX'))
 #mod1data <- data_train_balanced %>% select(-c('TARGET_AMT','INDEX'))
@@ -376,10 +373,6 @@ m1b$df_info
 models.df <- rbind(models.df,m1b$df_info)
 ```
 
-
-```{r}
-#summary(model.reduced)
-```
 
 We compute McFadden's pseudo R squared for logistic regression and we see that the difference between the full model and the reduced model is only marginal. 
 
@@ -445,6 +438,7 @@ Looking into the multicollinearity, we see that the categorical variables `JOB` 
 car::vif(model.reduced)
 ```
 
+
 ### Model 1 C&D: Balanced Data
 
 As a comparison, we make use of the balance dataset assembled earlier. We compute both the full and reduced models and store the metrics in the summary dataframe. 
@@ -474,6 +468,7 @@ models.df <- rbind(models.df,m1c$df_info)
 m1d <- score_model('modelbal.reduced', modelbal.reduced, mod1data_bal, output = FALSE)
 models.df <- rbind(models.df,m1d$df_info)
 ```
+
 
 ### Model 1 E&F: Influential and Outlying Observations Removed
 
@@ -505,6 +500,7 @@ m1f <- score_model('modelrmv.reduced', modelrmv.reduced, mod1data_rmv, output = 
 models.df <- rbind(models.df,m1f$df_info)
 ```
 
+
 ### Model 1: Summary
 
 Finally we consider the results of these models. The models are of fairly comparable performance. The models using the balanced data lose in accuracy and specificity but gain in sensitivity For the other models, the metrics are comparable. The model `modelrmv.reduced` has the smaller AIC overall but the full version actually has a slightly higher R squared. We proceed with the smaller model with hopes of reducing variances at the expense of introducing a bit a bias.
@@ -521,6 +517,7 @@ paste0('Reduced model (bal) = ',round(1-logLik(modelrmv.reduced)/logLik(modelrmv
 paste0('Full model (rmv) = ',round(1-logLik(modelbal.full)/logLik(modelbal.null),4))
 paste0('Reduced model (rmv) = ',round(1-logLik(modelrmv.reduced)/logLik(modelrmv.null),4))
 ```
+
 
 ### Model 2A: Penalized Logistic Model
 
@@ -627,6 +624,7 @@ summary(modeltgt.reduced)
 plot(modeltgt.reduced)
 ```
 
+
 ### Model 4: Weighted Least Squares
 
 We explore a weighted least squares model hoping for a better performance and manage to get a bump up 6.8%. We see that compared to the previous model the upper range of the QQ plot rapidly increases.
@@ -657,4 +655,6 @@ data_test
 
 write.csv(data_test, "data_test_results.csv")
 ```
+
+
 
