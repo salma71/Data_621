@@ -1,5 +1,5 @@
 ---
-title: "Data 621 - Homework 3"
+title: "Data 621 - Homework 5"
 author: "Dhairav Chhatbar, Mael Illien, Salma Elshahawy"
 date: "11/23/2020"
 output: 
@@ -18,6 +18,7 @@ output:
 
 ## Introduction 
 
+In this assignment, we are tasked with predicting the number of cases of wine sold to wine distribution companies following a sampling. The target variable, cases of wine sold, is count data and therefore will be modeled using appropriate techniques such as Poisson and Negative Binomial regressions. 
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, comment=NA, message=FALSE, warning=FALSE)
@@ -44,9 +45,20 @@ data_test <- read.csv("https://raw.githubusercontent.com/salma71/Data_621/master
 
 ### Data Exploration
 
+All the variable in this dataset are numeric and continuous except for `AcidIndex`, `STARS` and `LabelAppeal` which are discrete. The target variable `TARGET` is also discrete. There are a number of missing observations for certain chemical compositiion variables as well as a large number of wines with no `STARS` rating. The distribution of the continous variables appear well centered.
+
 
 ```{r data_summary_train, message=FALSE, warning=FALSE}
 skim(data_train)
+```
+
+```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+data_train %>% 
+  dplyr::select(-INDEX) %>%
+  gather() %>% 
+  ggplot(aes(x=value)) + 
+  geom_histogram(fill='pink') + 
+  facet_wrap(~key, scales = 'free')
 ```
 
 ---
@@ -55,6 +67,16 @@ skim(data_train)
 
 
 #### Correlations with Response Variable
+
+```{r correlations_plot, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
+corr_dataframe <- data_train %>%
+    mutate_if(is.factor, as.numeric)
+q <- cor(corr_dataframe)
+ggcorrplot(q, type = "upper", outline.color = "white",
+           ggtheme = theme_classic,
+           colors = c("#6D9EC1", "white", "#E46726"),
+           lab = TRUE, show.legend = FALSE, tl.cex = 8, lab_size = 3) 
+```
 
 
 ## Data Preparation {.tabset .tabset-fade .tabset-pills}
