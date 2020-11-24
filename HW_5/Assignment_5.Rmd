@@ -52,21 +52,126 @@ All the variable in this dataset are numeric and continuous except for `AcidInde
 skim(data_train)
 ```
 
+```{r}
+skim(data_test)
+```
+
+
+```{r}
+# remove index column as it is not needed
+data_train <- data_train %>% 
+  dplyr::select(-"INDEX")
+
+data_test <- data_test %>% 
+  dplyr::select(-"IN")
+```
+
+### Visualization
+
 ```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 data_train %>% 
-  dplyr::select(-INDEX) %>%
   gather() %>% 
   ggplot(aes(x=value)) + 
   geom_histogram(fill='pink') + 
   facet_wrap(~key, scales = 'free')
 ```
 
----
+In the box plot below, we plot several variables in to two panels. TotalSulfurDioxide, FreeSulfurDioxide, and ResidualSugar variables have large ranges compared to other variables. Therefore, we separated those variables in to a different panel to view their distribution. From both panel, we can tell a high number of variables have numerous outliers. However, almost all of the variables are centered around zero. Lastly, we also see several variables have negative values.
 
-### Visualization
+```{r fig.height=8, fig.width=10}
+library(ggpubr)
+# boxplot
+p1 <- data_train %>% 
+  dplyr::select(-c("TotalSulfurDioxide", "FreeSulfurDioxide", "ResidualSugar")) %>% 
+  gather(na.rm = TRUE) %>% 
+  ggplot(aes(factor(key), value)) +
+  geom_boxplot(outlier.colour = "#e281cf", outlier.shape = 1,  color = "#5aa1ed") +
+  coord_flip() +
+  labs(title = "Boxplot of Chemical Properties of Wine", x = "Chemical Properties", y = "Values") +
+  theme_minimal()
 
+p2 <- data_train %>% 
+  dplyr::select(c("TotalSulfurDioxide", "FreeSulfurDioxide", "ResidualSugar")) %>% 
+  gather(na.rm = TRUE) %>% 
+  ggplot(aes(factor(key), value)) +
+  geom_boxplot(outlier.colour = "#e281cf", outlier.shape = 1, color = "#5aa1ed") +
+  #labs(title = "Boxplot of Chemical Properties of Wine", x = "Chemical Properties", y = "Values") +
+  theme_minimal()
+
+ggarrange(p1, p2)
+```
+
+
+In the bar char below, `AcidIndex` tells us large quantity of wine were sold with the index number `7` and `8`. `LabelAppeal` tells us generic labeled wine sells the most; however, better label does yield higher number of wine samples per order. Lastly, `STARS` tells us excellent quality does not result in high wine orders. It could be due to high star wine bottle’s high price tag.
+
+```{r fig.height=10, fig.width=8}
+# barchart
+p3 <- data_train %>% 
+  dplyr::select(TARGET, STARS) %>% 
+  mutate(STARS = as.factor(STARS),
+         TARGET = as.factor(TARGET)) %>% 
+  ggplot(aes(STARS)) +
+  geom_bar(aes(fill = TARGET)) +
+  theme_minimal()
+
+p4 <- data_train %>%
+  dplyr::select(TARGET, LabelAppeal) %>% 
+  mutate(STARS = as.factor(LabelAppeal),
+         TARGET = as.factor(TARGET)) %>% 
+  ggplot(aes(LabelAppeal)) +
+  geom_bar(aes(fill = TARGET)) +
+  theme_minimal()
+
+p5 <- data_train %>% 
+  dplyr::select(TARGET, AcidIndex) %>% 
+  mutate(STARS = as.factor(AcidIndex),
+         TARGET = as.factor(TARGET)) %>% 
+  ggplot(aes(AcidIndex)) +
+  geom_bar(aes(fill = TARGET)) +
+  theme_minimal()
+
+ggarrange(p5, ggarrange(p3, p4, ncol = 2, nrow = 1, legend = "none"), nrow = 2, common.legend = TRUE)
+```
+
+```{r fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+# histogram
+data_train %>% 
+  dplyr::select(-c("AcidIndex", "STARS", "TARGET", "LabelAppeal")) %>% 
+  gather() %>% 
+  ggplot(aes(value)) +
+  facet_wrap(~key, scale = "free",  ncol = 3) +
+  geom_histogram(binwidth = function(x) 2 * IQR(x) / (length(x)^(1/3)), fill="pink") +
+  theme_minimal()
+```
+
+In the correlation table and plot below, we see, STARS and LabelAppeal are most positively correlated variables with the response variable. We expected this because our variable description mentions these variable’s theoretical effect are higher than other variables. Also, we some mild negative correlation between the response variable and AcidIndex variable.
 
 #### Correlations with Response Variable
+
+```{r}
+# top correlation
+wine_train_corr <- data_train %>% 
+  drop_na() %>% 
+  cor()
+
+kable(sort(wine_train_corr[,1], decreasing = T), col.names = c("Correlation")) %>% 
+  kable_styling(full_width = F)
+```
+
+In the correlation table and plot below, we see, `STARS` and `LabelAppeal` are most positively correlated variables with the response variable. We expected this because our variable description mentions these variable’s theoretical affect are higher than other variables. Also, we some mild negative correlation between the response variable and `AcidIndex` variable.
+
+```{r fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
+library(corrplot)
+library(RColorBrewer)
+# correlation plot
+corrplot(wine_train_corr, 
+         method = "number", 
+         type = "lower",
+         col = brewer.pal(n = 15, name = "Reds"),
+         number.cex = .7, tl.cex = .7,
+         tl.col = "black", tl.srt = 45)
+```
+
 
 ```{r correlations_plot, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 corr_dataframe <- data_train %>%
@@ -81,6 +186,34 @@ ggcorrplot(q, type = "upper", outline.color = "white",
 
 ## Data Preparation {.tabset .tabset-fade .tabset-pills}
 
+Using the `aggr` function from `VIM package`, We see several variables have missing values. According to UCI Machine Learning, who published this dataset, all wine contain some natural sulfites. Therefore, we will impute the missing values for sulfite chemical properties. Also, it’s rare to find wines with less than 1 gram/liter of sugar. We will impute this as well. Matter of fact, since all missing values are missing at random, we will impute all the missing values using the mice package and random forest method. Mice uses multivariate imputations to estimate the missing values. Using multiple imputations helps in resolving the uncertainty for the missingness. Our target variable will be removed as a predictor variable but still will be imputed. Our response variables will be removed as predictor variables but still will be imputed.
+
+```{r fig.height=10, fig.width=10}
+library(VIM)
+# missing value columns
+aggr(data_train, 
+     sortVars=TRUE, 
+     labels=names(data_train), 
+     cex.axis=.5, 
+     bars = FALSE, 
+     col = c("white", "#E46726"),
+     combined = TRUE,
+     #border = NA,
+     ylab = "Missing Values") 
+```
+
+```{r message=FALSE, warning=FALSE}
+library(mice)
+# imputating train data
+init <- mice(data_train)
+meth <- init$method
+predM <- init$predictorMatrix
+predM[, c("TARGET")] <- 0 #this code will remove the variable as a predictor but still will be imputed
+
+data_train_impute <- mice(data_train, method = 'rf', predictorMatrix=predM)
+data_train_imputed <- complete(data_train_impute)
+print(paste0("Missing value after imputation: ", sum(is.na(data_train_imputed))))
+```
 
 ## Model Building {.tabset .tabset-fade .tabset-pills}
 
