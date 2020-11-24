@@ -133,6 +133,8 @@ p5 <- data_train %>%
 ggarrange(p5, ggarrange(p3, p4, ncol = 2, nrow = 1, legend = "none"), nrow = 2, common.legend = TRUE)
 ```
 
+In the histogram plot below, we see all the continous variable are normally distributed. However, several variables have negatives value in them. We will have to transform these values to positive for our analysis. 
+
 ```{r fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
 # histogram
 data_train %>% 
@@ -143,8 +145,6 @@ data_train %>%
   geom_histogram(binwidth = function(x) 2 * IQR(x) / (length(x)^(1/3)), fill="pink") +
   theme_minimal()
 ```
-
-In the correlation table and plot below, we see, STARS and LabelAppeal are most positively correlated variables with the response variable. We expected this because our variable description mentions these variable’s theoretical effect are higher than other variables. Also, we some mild negative correlation between the response variable and AcidIndex variable.
 
 #### Correlations with Response Variable
 
@@ -217,7 +217,26 @@ print(paste0("Missing value after imputation: ", sum(is.na(data_train_imputed)))
 
 ## Model Building {.tabset .tabset-fade .tabset-pills}
 
-### Model 1: Base Model
+### Model 1: Raw_data Poison 
+
+```{r}
+# poisson model with the missing values
+model1 <- glm(TARGET ~ ., family = poisson, data_train)
+summary(model1)
+```
+
+The deviance residuals is quite symmetrical. This means that the predicted points are close to actual observed points. As expected and seen in our correlation table, `STARS`, `LabelAppeal` and `AcidIndex` are significant variables. And the variation in standard error is low. 
+
+
+### Imputed Data - Poisson 
+
+```{r}
+# poisson model with the imputed values
+model2 <- glm(TARGET ~ ., family = poisson, data_train_imputed)
+summary(model2)
+```
+
+Again the deviance residuals are quite the same. However, with imputation, there are more significant variables introduced in the model. Additionally, the AIC score improved dramatically from 23172 to 50384. Also, the deviance residuals decreased significantly to 18,412 from 40,000.
 
 ### Model 2: Observation Removal
 
