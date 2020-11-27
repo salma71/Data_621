@@ -34,6 +34,7 @@ library(cowplot)
 library(pROC)
 library(broom)
 library(car)
+library(pscl)
 ```
 
 ```{r message=FALSE, warning=FALSE}
@@ -239,6 +240,13 @@ summary(model2)
 Again the deviance residuals are quite the same. However, with imputation, there are more significant variables introduced in the model. Additionally, the AIC score improved dramatically from 23172 to 50384. Also, the deviance residuals decreased significantly to 18,412 from 40,000.
 
 ### Model 2: Observation Removal
+
+### Model 3: Zero Inflated
+```{r}
+model3 <- zeroinfl(TARGET ~., data_train_imputed, dist = 'poisson')
+summary(model3)
+
+```
 
 ## Model Selection 
 
