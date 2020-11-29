@@ -263,13 +263,31 @@ summary(model3b)
 ## Model Selection 
 
 ```{r}
+table(round(model2$fitted.values))
+table(round(model3$fitted.values))
+table(round(model3b$fitted.values))
+```
+
+
+```{r}
 pred_train <- data.frame(TARGET=data_train_imputed$TARGET, 
-                         model2=predict(model2, data_train_imputed, type="response"), 
-                         model3=predict(model3, data_train_imputed, type="response"), 
-                         model3b=predict(model3b, data_train_imputed, type="response"))
+                         model2=model2$fitted.values, 
+                         model3=model3$fitted.values, 
+                         model3b=model3b$fitted.values)
 pred_train <- round(pred_train, 2)
 pred_train
 ```
+
+```{r}
+model2_fitted.values <- factor(round(model2$fitted.values),levels=rev(0:9))
+model3_fitted.values <- factor(round(model3$fitted.values),levels=rev(0:9))
+model3b_fitted.values <- factor(round(model3b$fitted.values),levels=rev(0:9))
+
+confusionMatrix(model2_fitted.values, factor(data_train_imputed$TARGET,levels=rev(0:9)))
+confusionMatrix(model3_fitted.values, factor(data_train_imputed$TARGET,levels=rev(0:9)))
+confusionMatrix(model3b_fitted.values, factor(data_train_imputed$TARGET,levels=rev(0:9)))
+```
+
 
 
 ```{r}
