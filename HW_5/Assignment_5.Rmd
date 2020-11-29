@@ -211,9 +211,11 @@ print(paste0("Missing value after imputation: ", sum(is.na(data_train_imputed)))
 # poisson model with the missing values
 model1 <- glm(TARGET ~ ., family = poisson, data_train)
 summary(model1)
+print('Goodness of Fit Test:')
+with(model1, cbind(res.deviance = deviance, df = df.residual,  p = pchisq(deviance, df.residual, lower.tail=FALSE)))
 ```
 
-The deviance residuals is quite symmetrical. This means that the predicted points are close to actual observed points. As expected and seen in our correlation table, `STARS`, `LabelAppeal` and `AcidIndex` are significant variables. And the variation in standard error is low. 
+The deviance residuals is quite symmetrical. This means that the predicted points are close to actual observed points. As expected and seen in our correlation table, `STARS`, `LabelAppeal` and `AcidIndex` are significant variables. And the variation in standard error is low. The goodness of fit test has a high p value which indicates that the model fits the data well.
 
 
 ### Imputed Data - Poisson 
@@ -222,9 +224,13 @@ The deviance residuals is quite symmetrical. This means that the predicted point
 # poisson model with the imputed values
 model2 <- glm(TARGET ~ ., family = poisson, data_train_imputed)
 summary(model2)
+print('Goodness of Fit Test:')
+with(model2, cbind(res.deviance = deviance, df = df.residual, p = pchisq(deviance, df.residual, lower.tail=FALSE)))
 ```
 
-Again the deviance residuals are quite the same. However, with imputation, there are more significant variables introduced in the model. Additionally, the AIC score improved dramatically from 23172 to 50384. Also, the deviance residuals decreased significantly to 18,412 from 40,000.
+Again the deviance residuals are quite the same. However, with imputation, there are more significant variables introduced in the model. Additionally, the AIC score improved dramatically from 23172 to 50384. Also, the deviance residuals decreased significantly to 18,412 from 40,000. However, the goodness of fit test  has a very small p value, suggesting that this model does not fit the data well. 
+
+Given what we observed when looking at the distribution of `TARGET`, we should expext the inflated count of zeros to affect the model and bias results. For this reason, we move to a zero-inflated model to reflect this.
 
 ### Model 2: Observation Removal
 
@@ -232,7 +238,6 @@ Again the deviance residuals are quite the same. However, with imputation, there
 ```{r}
 model3 <- zeroinfl(TARGET ~., data_train_imputed, dist = 'poisson')
 summary(model3)
-
 ```
 
 ## Model Selection 
