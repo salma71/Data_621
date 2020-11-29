@@ -69,7 +69,7 @@ data_test <- data_test %>%
 
 ### Visualization
 
-The visualizations below display the distributions of the dataset. All continuous variables are centered and close to normally distributed. We note that some variables are centered around zero and take negative values which is unexpected and will be investigated further and transformed for our analysis. The distribution of the `TARGET` variable looks like it could be well described by the poisson distribution which has equal mean and variance but the high number of zero values justifies the use of a zero-inflated model as well. 
+The visualizations below display the distributions of the dataset. All continuous variables are centered and close to normally distributed. We note that some variables are centered around zero and take negative values which is unexpected and will be investigated further and transformed for our analysis. The distribution of the `TARGET` variable looks like it could be well described by the poisson distribution which has equal mean and variance but the high number of zero values justifies the use of a zero-inflated model as well. The mean and variance of `TARGET` are 3.02 and 3.71 respectively, which is close enough to satisfy the equal mean-variance assumption of the poisson distribution.
 
 
 ```{r fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
@@ -228,16 +228,36 @@ print('Goodness of Fit Test:')
 with(model2, cbind(res.deviance = deviance, df = df.residual, p = pchisq(deviance, df.residual, lower.tail=FALSE)))
 ```
 
-Again the deviance residuals are quite the same. However, with imputation, there are more significant variables introduced in the model. Additionally, the AIC score improved dramatically from 23172 to 50384. Also, the deviance residuals decreased significantly to 18,412 from 40,000. However, the goodness of fit test  has a very small p value, suggesting that this model does not fit the data well. 
+Again the deviance residuals are quite the same. However, with imputation, there are more significant variables introduced in the model. Additionally, the AIC score improved dramatically from 23172 to 50384. Also, the deviance residuals decreased significantly to 18,412 from 40,000. However, the goodness of fit test  has a very small p value, suggesting that this model does not fit the data well. Since the residual deviance is greater than the degrees of freedom, then some over-dispersion exists.
 
 Given what we observed when looking at the distribution of `TARGET`, we should expext the inflated count of zeros to affect the model and bias results. For this reason, we move to a zero-inflated model to reflect this.
 
-### Model 2: Observation Removal
+### Model 2: Quasipoisson Model
+
+We try a quasipoisson model to account for nay overdispersion and to see if the results change significantly. As seen in the summary below, the models are nearly identical.
+
+```{r}
+# poisson model with the imputed values
+model2a <- glm(TARGET ~ ., family = quasipoisson(link='log'), data_train_imputed)
+summary(model2a)
+print('Goodness of Fit Test:')
+with(model2a, cbind(res.deviance = deviance, df = df.residual, p = pchisq(deviance, df.residual, lower.tail=FALSE)))
+```
+
+
 
 ### Model 3: Zero Inflated
+
+We saw earlier that the dependent variable had an excess number of zeros which skewed the distribution from a typical poisson. The zero inflated model generates coefficients for the zero count part of the model as well as for the count part. 
+
 ```{r}
 model3 <- zeroinfl(TARGET ~., data_train_imputed, dist = 'poisson')
 summary(model3)
+```
+
+```{r}
+model3b <- zeroinfl(TARGET ~ . - FixedAcidity - Density, data_train_imputed, dist = 'poisson')
+summary(model3b)
 ```
 
 ## Model Selection 
