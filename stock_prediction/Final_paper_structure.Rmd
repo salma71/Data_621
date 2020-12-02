@@ -29,22 +29,52 @@ library(readr)
 library(skimr)
 library(knitcitations)
 library(pander)
+library(tidyverse)
 ```
 
-# Abstract
 
+# Models to try (remove later)
+
+1. Logistic (direction of price movement, up or down)
+2. Generalized least squares, auto-regressive model (time series prediction)
+
+# Abstract
+Use 250 words or less to summarize your problem, methodology, and major outcomes.
+
+Problem:
+
+Methodology:
+
+Major Outcomes:
 
 # Key Words
+Select a few key words (up to five) related to your work.
 
 
 # Introduction
+Describe the background and motivation of your problem.
 
+Background:
+- Predicting stock prices or stock movements
+
+Motivation
+- Wealth of data available in finance 
 
 
 # Literature Review
+Discuss how other researchers have addressed similar problems, what their achievements are, and what the advantage and drawbacks of each reviewed approach are. Explain how your investigation is similar or different to the state-of-the- art. Please cite the relevant papers where appropriate.
 
 
 # Methodology
+Discuss the key aspects of your problem, data set and regression model(s). Given that you are working on real-world data, explain at a high-level your exploratory data analysis, how you prepared the data for regression modeling, your process for building regression models, and your model selection.
+
+- EDA showing basic time series and indicators
+- Data preparation: create new variables? created an up/down indicator
+- Models to try
+
+
+# Experimentation and Results
+Describe the specifics of what you did (data exploration, data preparation, model building, model selection, model evaluation, etc.), and what you found out (statistical analyses, interpretation and discussion of the results, etc.).
 
 ### Data Description
 
@@ -54,14 +84,31 @@ tickers <- read_csv('https://raw.githubusercontent.com/salma71/Data_621/master/P
 skim(dataset)
 ```
 
+### Data Processing
+
+```{r}
+dataset$date <- as.Date(dataset$date, format="%m/%d/%Y")
+```
+
+### Data Exploration
+
+```{r}
+dataset %>% filter(ticker=='AAPL') %>% ggplot(aes(x=date,y=close)) + geom_line()
+```
+
 ### Data Imputation
 
 Example for citing @kulkarni_time_2020
 
-# Experimentation and Results
+### Model Building
+
+### Model Evaluation
+
+### Results
 
 
 # Discussion and Conclusion
+Conclude your findings, limitations, and suggest areas for future work.
 
 
 \newpage
