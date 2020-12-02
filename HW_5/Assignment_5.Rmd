@@ -62,7 +62,6 @@ skim(data_test)
 # remove index column as it is not needed
 data_train <- data_train %>% 
   dplyr::select(-"INDEX")
-
 data_test <- data_test %>% 
   dplyr::select(-"IN")
 ```
@@ -102,7 +101,6 @@ p1 <- data_train %>%
   coord_flip() +
   labs(title = "Boxplot of Chemical Properties of Wine", x = "Chemical Properties", y = "Values") +
   theme_minimal()
-
 p2 <- data_train %>% 
   dplyr::select(c("TotalSulfurDioxide", "FreeSulfurDioxide", "ResidualSugar")) %>% 
   gather(na.rm = TRUE) %>% 
@@ -110,7 +108,6 @@ p2 <- data_train %>%
   geom_boxplot(outlier.colour = "#e281cf", outlier.shape = 1, color = "#5aa1ed") +
   #labs(title = "Boxplot of Chemical Properties of Wine", x = "Chemical Properties", y = "Values") +
   theme_minimal()
-
 ggarrange(p1, p2)
 ```
 
@@ -126,7 +123,6 @@ p3 <- data_train %>%
   ggplot(aes(STARS)) +
   geom_bar(aes(fill = TARGET)) +
   theme_minimal()
-
 p4 <- data_train %>%
   dplyr::select(TARGET, LabelAppeal) %>% 
   mutate(STARS = as.factor(LabelAppeal),
@@ -134,7 +130,6 @@ p4 <- data_train %>%
   ggplot(aes(LabelAppeal)) +
   geom_bar(aes(fill = TARGET)) +
   theme_minimal()
-
 p5 <- data_train %>% 
   dplyr::select(TARGET, AcidIndex) %>% 
   mutate(STARS = as.factor(AcidIndex),
@@ -142,7 +137,6 @@ p5 <- data_train %>%
   ggplot(aes(AcidIndex)) +
   geom_bar(aes(fill = TARGET)) +
   theme_minimal()
-
 ggarrange(p5, ggarrange(p3, p4, ncol = 2, nrow = 1, legend = "none"), nrow = 2, common.legend = TRUE)
 ```
 
@@ -153,7 +147,6 @@ ggarrange(p5, ggarrange(p3, p4, ncol = 2, nrow = 1, legend = "none"), nrow = 2, 
 wine_train_corr <- data_train %>% 
   drop_na() %>% 
   cor()
-
 kable(sort(wine_train_corr[,1], decreasing = T), col.names = c("Correlation")) %>% 
   kable_styling(full_width = F)
 ```
@@ -176,7 +169,7 @@ corrplot(wine_train_corr,
 
 Using the `aggr` function from `VIM package`, We see several variables have missing values. According to UCI Machine Learning, who published this dataset, all wine contain some natural sulfites. Therefore, we will impute the missing values for sulfite chemical properties. Also, it’s rare to find wines with less than 1 gram/liter of sugar. We will impute this as well. Matter of fact, since all missing values are missing at random, we will impute all the missing values using the mice package and random forest method. Mice uses multivariate imputations to estimate the missing values. Using multiple imputations helps in resolving the uncertainty for the missingness. Our target variable will be removed as a predictor variable but still will be imputed. Our response variables will be removed as predictor variables but still will be imputed.
 
-```{r fig.height=10, fig.width=10}
+```{r fig.height=10, fig.width=10, message=FALSE}
 library(VIM)
 # missing value columns
 aggr(data_train, 
@@ -197,7 +190,6 @@ init <- mice(data_train)
 meth <- init$method
 predM <- init$predictorMatrix
 predM[, c("TARGET")] <- 0 #this code will remove the variable as a predictor but still will be imputed
-
 data_train_impute <- mice(data_train, method = 'rf', predictorMatrix=predM)
 data_train_imputed <- complete(data_train_impute)
 print(paste0("Missing value after imputation: ", sum(is.na(data_train_imputed))))
@@ -205,7 +197,7 @@ print(paste0("Missing value after imputation: ", sum(is.na(data_train_imputed)))
 
 ## Model Building {.tabset .tabset-fade .tabset-pills}
 
-### Model 1: Raw_data Poison 
+### Model 1: Poisson (Raw data) 
 
 ```{r}
 # poisson model with the missing values
@@ -218,7 +210,7 @@ with(model1, cbind(res.deviance = deviance, df = df.residual,  p = pchisq(devian
 The deviance residuals is quite symmetrical. This means that the predicted points are close to actual observed points. As expected and seen in our correlation table, `STARS`, `LabelAppeal` and `AcidIndex` are significant variables. And the variation in standard error is low. The goodness of fit test has a high p value which indicates that the model fits the data well.
 
 
-### Imputed Data - Poisson 
+###  Model 2: Poisson (Imputed Data)
 
 ```{r}
 # poisson model with the imputed values
@@ -232,77 +224,81 @@ Again the deviance residuals are quite the same. However, with imputation, there
 
 Given what we observed when looking at the distribution of `TARGET`, we should expext the inflated count of zeros to affect the model and bias results. For this reason, we move to a zero-inflated model to reflect this.
 
-### Model 2: Quasipoisson Model
+### Model 3: Quasipoisson Model
 
 We try a quasipoisson model to account for nay overdispersion and to see if the results change significantly. As seen in the summary below, the models are nearly identical.
 
 ```{r}
 # poisson model with the imputed values
-model2a <- glm(TARGET ~ ., family = quasipoisson(link='log'), data_train_imputed)
-summary(model2a)
+model3 <- glm(TARGET ~ ., family = quasipoisson(link='log'), data_train_imputed)
+summary(model3)
 print('Goodness of Fit Test:')
-with(model2a, cbind(res.deviance = deviance, df = df.residual, p = pchisq(deviance, df.residual, lower.tail=FALSE)))
+with(model3, cbind(res.deviance = deviance, df = df.residual, p = pchisq(deviance, df.residual, lower.tail=FALSE)))
 ```
 
 
 
-### Model 3: Zero Inflated
+### Model 4: Zero Inflated
 
 We saw earlier that the dependent variable had an excess number of zeros which skewed the distribution from a typical poisson. The zero inflated model generates coefficients for the zero count part of the model as well as for the count part. 
 
 ```{r}
-model3 <- zeroinfl(TARGET ~., data_train_imputed, dist = 'poisson')
-summary(model3)
+model4 <- zeroinfl(TARGET ~., data_train_imputed, dist = 'poisson')
+summary(model4)
 ```
 
 ```{r}
-model3b <- zeroinfl(TARGET ~ . - FixedAcidity - Density, data_train_imputed, dist = 'poisson')
-summary(model3b)
+model4b <- zeroinfl(TARGET ~ . - FixedAcidity - Density, data_train_imputed, dist = 'poisson')
+summary(model4b)
 ```
 
 ## Model Selection 
-
-```{r}
-table(round(model2$fitted.values))
-table(round(model3$fitted.values))
-table(round(model3b$fitted.values))
-```
-
-
-```{r}
+Based on the models tested, we select the Zero Inflated model due to the highest accuracy of the 4 models
+```{r, fig.width=10, fig.height=5}
 pred_train <- data.frame(TARGET=data_train_imputed$TARGET, 
                          model2=model2$fitted.values, 
                          model3=model3$fitted.values, 
-                         model3b=model3b$fitted.values)
-pred_train <- round(pred_train, 2)
-pred_train
+                         model4b=model4b$fitted.values)
+pred_train <- round(pred_train, 0)
+colnames(pred_train) <- c("TARGET","Poisson (Imputed)" ,"Quasipoisson Model", "Zero Inflated")
+
+pred_train %>%
+  gather() %>% 
+  ggplot(aes(value)) +
+  facet_wrap(~key, scale = "free",  ncol = 4) +
+  geom_bar(fill="pink") +
+  theme_minimal() + labs(x="Cases Bought", y = "Count", title = "Prediction Histogram")
+
+
 ```
 
 ```{r}
+
 model2_fitted.values <- factor(round(model2$fitted.values),levels=rev(0:9))
 model3_fitted.values <- factor(round(model3$fitted.values),levels=rev(0:9))
-model3b_fitted.values <- factor(round(model3b$fitted.values),levels=rev(0:9))
-
-confusionMatrix(model2_fitted.values, factor(data_train_imputed$TARGET,levels=rev(0:9)))
-confusionMatrix(model3_fitted.values, factor(data_train_imputed$TARGET,levels=rev(0:9)))
-confusionMatrix(model3b_fitted.values, factor(data_train_imputed$TARGET,levels=rev(0:9)))
-```
+model4b_fitted.values <- factor(round(model4b$fitted.values),levels=rev(0:9))
 
 
+m2_cfm <- confusionMatrix(model2_fitted.values, factor(data_train_imputed$TARGET,levels=rev(0:9)))
+m3_cfm <- confusionMatrix(model3_fitted.values, factor(data_train_imputed$TARGET,levels=rev(0:9)))
+m4_cfm <- confusionMatrix(model4b_fitted.values, factor(data_train_imputed$TARGET,levels=rev(0:9)))
 
-```{r}
-# data_test_trans <- data_test %>% select(-chas,-rm,-lstat)
-# test_predict <- predict(mt1$model, newdata=data_test_trans)
-# test_predict <- ifelse(test_predict<.5,0,1)
-# 
-# data_test$target <- test_predict
-# 
-# ggplot(data_test, aes(x=index(data_test), y=target, color=factor(target))) + geom_point() +
-#   labs(x="Observation", y="target", title = "Model mt1 Prediction", colour = "target")
-# 
-# table(test_predict)
-# 
-# write.csv(test_predict, "CrimePredictions.csv")
+models_sum <- data.frame(m2_cfm$overall, m3_cfm$overall, m4_cfm$overall)
+colnames(models_sum) <- c("Poisson (Imputed)" ,"Quasipoisson Model", "Zero Inflated")
+round(models_sum, 2)
 
 ```
 
+
+
+```{r, message=FALSE, warning=FALSE}
+test_predict <- predict(model4b, newdata=data_test)
+
+
+data_test$TARGET <- test_predict
+ggplot(data_test, aes(x=round(data_test$TARGET, 0))) + geom_bar(fill="orchid3") + theme_minimal()+
+  labs(y="Count", title = "Prediction: Zero Inflated Model (Model4b)") + scale_x_discrete(name = "Cases Bought", 
+                    limits=c("1","2","3","4", "5", "6", "7", "8"))
+  
+write.csv(test_predict, "WinePredictions.csv")
+```
