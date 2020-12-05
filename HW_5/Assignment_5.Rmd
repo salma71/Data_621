@@ -289,16 +289,27 @@ round(models_sum, 2)
 
 ```
 
+```{r message=FALSE, warning=FALSE}
+init <- mice(data_test)
+meth <- init$method
+predM <- init$predictorMatrix
+predM[, c("TARGET")] <- 0 #this code will remove the variable as a predictor but still will be imputed
+data_test_impute <- mice(data_test, method = 'rf', predictorMatrix=predM)
+data_test_imputed <- complete(data_test_impute)
+print(paste0("Missing value after imputation: ", sum(is.na(data_test_imputed))))
+```
+
 
 
 ```{r, message=FALSE, warning=FALSE}
-test_predict <- predict(model4b, newdata=data_test)
+test_predict <- predict(model4b, newdata=data_test_imputed)
+test_predict <- round(test_predict,0)
+data_pred <- data.frame(TARGET=test_predict)
+
+ggplot(data_pred, aes(x=TARGET)) + geom_bar(fill="orchid3") + theme_minimal() +
+  labs(y="Count", title = "Prediction: Zero Inflated Model (Model4b)") + 
+    scale_x_discrete(name = "Cases Bought", limits=c("1","2","3","4", "5", "6", "7", "8"))
 
 
-data_test$TARGET <- test_predict
-ggplot(data_test, aes(x=round(data_test$TARGET, 0))) + geom_bar(fill="orchid3") + theme_minimal()+
-  labs(y="Count", title = "Prediction: Zero Inflated Model (Model4b)") + scale_x_discrete(name = "Cases Bought", 
-                    limits=c("1","2","3","4", "5", "6", "7", "8"))
-  
 write.csv(test_predict, "WinePredictions.csv")
 ```
