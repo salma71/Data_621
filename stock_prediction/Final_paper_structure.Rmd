@@ -32,6 +32,7 @@ library(pander)
 library(tidyverse)
 library(corrplot)
 library(quantmod)
+library(data.table)
 ```
 
 
@@ -118,21 +119,30 @@ dataset %>% filter(ticker=='AAPL') %>% ggplot(aes(x=date,y=close)) + geom_line()
 
 ```{r}
 AAPL <- dataset %>% filter(ticker=='AAPL') 
-AAPL <- AAPL %>% mutate(macd=MACD(Cl(AAPL), nFast=12, nSlow=26, nSig=9, maType=SMA)[,1], 
+AAPL_full <- AAPL %>% mutate(macd=MACD(Cl(AAPL), nFast=12, nSlow=26, nSig=9, maType=SMA)[,1], 
                         m5=momentum(AAPL$close, n=5), 
                         m20=momentum(AAPL$close, n=20), 
                         rsi=RSI(AAPL$close, n=14),
                         vol1=ROC(AAPL$volume, n=1),
-                        vol5=ROC(AAPL$volume, n=5)) %>% 
+                        vol5=ROC(AAPL$volume, n=5)) %>%
+                        drop_na()
+
+head(AAPL_full,10)
+```
+
+```{r}
+AAPL_model1 <- AAPL_full   %>% 
                   mutate(TARGET=if_else(shift(close, n=1, fill=NA, type="lead") > close, 1, 0)) %>%
                   select(-c(date,ticker,label,open,high,low,close,volume,unadjustedVolume,vwap,change,changeOverTime)) %>%
                   drop_na()
-AAPL$TARGET <- factor(AAPL$TARGET)
-head(AAPL,10)
+                  
+AAPL_model1$TARGET <- factor(AAPL_model1$TARGET)
+
+head(AAPL_model1,10)
 ```
 
 ```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
-AAPL %>% 
+AAPL_full %>% 
   keep(is.numeric) %>%
   gather() %>% 
   ggplot(aes(x= value)) + 
@@ -142,25 +152,23 @@ AAPL %>%
 
 ```{r}
 library(corrplot)
-corr_dataframe <- AAPL %>% mutate_if(is.factor, as.numeric)
+corr_dataframe <- AAPL_model1 %>% mutate_if(is.factor, as.numeric)
 corr.d <- cor(corr_dataframe)
 corr.d[ lower.tri( corr.d, diag = TRUE ) ] <- NA
 corrplot( corr.d, type = "upper", diag = FALSE )
 ```
-```{r}
 
-```
-
+### Model 1
 
 
 ```{r}
 model.null <- glm(TARGET ~ 1,
-                 data=AAPL,
+                 data=AAPL_model1,
                  family = binomial(link="logit")
                  )
 
 model.full <- glm(TARGET ~ .,
-                 data=AAPL,
+                 data=AAPL_model1,
                  family = binomial(link="logit")
                  )
 
@@ -171,13 +179,36 @@ model.reduced <- step(model.null,
              direction="both",
              test="Chisq",
              trace=0,
-             data=AAPL)
+             data=AAPL_model1)
 ```
 
 
 ```{r}
 summary(model.full)
 summary(model.reduced)
+```
+
+
+### Model 2
+
+```{r}
+
+AAPL_model2 <- AAPL_full %>% mutate(TARGET=shift(changePercent, n=1, fill=NA, type="lead")) %>%
+                  select(-c(date,ticker,label,open,high,low,close,volume,unadjustedVolume,vwap,change,changeOverTime))  %>%
+                  drop_na()
+head(AAPL_model2,20)
+```
+
+
+```{r}
+model2 <- lm(TARGET ~ . - changePercent, data=AAPL_model2)
+summary(model2)
+```
+
+### Model 3
+
+```{r}
+mod3.ols <- lm(close ~ , data=AAPL_full %>% select(-c(date, ticker, label))
 ```
 
 
