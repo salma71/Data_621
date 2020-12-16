@@ -131,9 +131,10 @@ head(AAPL_full,10)
 ```
 
 ```{r}
-AAPL_model1 <- AAPL_full   %>% 
+AAPL_model1 <- AAPL_full%>% 
                   mutate(TARGET=if_else(shift(close, n=1, fill=NA, type="lead") > close, 1, 0)) %>%
-                  select(-c(date,ticker,label,open,high,low,close,volume,unadjustedVolume,vwap,change,changeOverTime)) %>%
+                  select(-c(date,ticker,label)) %>%
+                  #select(-c(date,ticker,label,open,high,low,close,volume,unadjustedVolume,vwap,change,changeOverTime)) %>%
                   drop_na()
                   
 AAPL_model1$TARGET <- factor(AAPL_model1$TARGET)
@@ -171,21 +172,19 @@ model.full <- glm(TARGET ~ .,
                  data=AAPL_model1,
                  family = binomial(link="logit")
                  )
-
-
-    
-model.reduced <- step(model.null,
-              scope = list(upper=model.full),
-             direction="both",
-             test="Chisq",
-             trace=0,
-             data=AAPL_model1)
 ```
 
 
 ```{r}
 summary(model.full)
-summary(model.reduced)
+```
+
+```{r}
+model.small <- glm(TARGET ~ rsi+macd,
+                 data=AAPL_model1,
+                 family = binomial(link="logit")
+                 )
+summary(model.small)
 ```
 
 
@@ -208,7 +207,7 @@ summary(model2)
 ### Model 3
 
 ```{r}
-mod3.ols <- lm(close ~ , data=AAPL_full %>% select(-c(date, ticker, label))
+#mod3.ols <- lm(close ~ , data=AAPL_full %>% select(-c(date, ticker, label))
 ```
 
 
