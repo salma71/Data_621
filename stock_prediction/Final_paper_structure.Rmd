@@ -147,13 +147,6 @@ AAPL_full %>%
   facet_wrap(~key, scales = 'free')
 ```
 
-```{r}
-library(corrplot)
-corr_dataframe <- AAPL_model1_data %>% mutate_if(is.factor, as.numeric)
-corr.d <- cor(corr_dataframe)
-corr.d[ lower.tri( corr.d, diag = TRUE ) ] <- NA
-corrplot( corr.d, type = "upper", diag = FALSE )
-```
 
 ```{r}
 # Create target variable
@@ -166,6 +159,14 @@ AAPL_model1_data <- AAPL_full%>%
 AAPL_model1_data$TARGET <- factor(AAPL_model1_data$TARGET)
 
 head(AAPL_model1_data,10)
+```
+
+```{r}
+library(corrplot)
+corr_dataframe <- AAPL_model1_data %>% mutate_if(is.factor, as.numeric)
+corr.d <- cor(corr_dataframe)
+corr.d[ lower.tri( corr.d, diag = TRUE ) ] <- NA
+corrplot( corr.d, type = "upper", diag = FALSE )
 ```
 
 ```{r}
@@ -244,7 +245,7 @@ car::vif(m1c.full)
 ```
 
 ```{r}
-glm.probs <- predict(model1c.full, type="response")
+glm.probs <- predict(m1c.full, type="response")
 glm.pred <- ifelse(glm.probs > 0.5, 1, 0)
 results <- tibble(target=m1c_data_trimmed$TARGET, pred=glm.pred)
 results <- results %>% mutate(pred.class = as.factor(pred), target.class = as.factor(target))
@@ -293,30 +294,112 @@ ar(AAPL_close)
 ```
 
 ```{r}
-m2.gls2 <- gls(AAPL_close ~ time(AAPL_close), correlation = corARMA(p=2))
-summary(m2.gls2)
+#m2.gls2 <- gls(AAPL_close ~ time(AAPL_close), correlation = corARMA(p=2))
+#summary(m2.gls2)
 ```
 
+#### ARIMA
 
-```{r}
-model2.arima <- arima(AAPL_close, order = c(2, 0, 0))
-model2.arima_fitted <- AAPL_close - residuals(model2.arima)
-model2.arima
-```
+Time series needs to be stationary. The higher order differentials have mean 0 but the varaince seems to increase in the last part of the series. 
 
 ```{r}
-plot(AAPL_ts)
-#points(AAPL_ts_fitted, type = "l", col = 2, lty = 2)
+par(mfrow=c(2,1))
+APPLdiff1 <- diff(AAPL$close, differences=1)
+APPLdiff2 <- diff(AAPL$close, differences=2)
+plot.ts(APPLdiff1)
+plot.ts(APPLdiff2)
+```
+
+Order 1 differential
+
+```{r}
+par(mfrow=c(1,2))
+acf(APPLdiff1, lag.max=20)             
+pacf(APPLdiff1, lag.max=20)
+acf(APPLdiff1, lag.max=20, plot=FALSE) 
+pacf(APPLdiff1, lag.max=20, plot=FALSE)
+```
+
+Order 2 differential
+
+```{r}
+par(mfrow=c(1,2))
+acf(APPLdiff2, lag.max=20)             # plot a correlogram
+acf(APPLdiff2, lag.max=20, plot=FALSE) # get the autocorrelation values
+pacf(APPLdiff2, lag.max=20)             
+pacf(APPLdiff2, lag.max=20, plot=FALSE)
+```
+
+The partial correlogram shows that the partial autocorrelations at lags 1-6, 8-11 exceed the significance bounds, are negative, and are slowly decreasing in magnitude with increasing lag. The partial autocorrelations tail off to zero after lag 11.
+
+Since the correlogram is zero after lag 1, and the partial correlogram tails off to zero after lag 6 (or 11), this means that the following ARMA (autoregressive moving average) models are possible for the time series of first differences:
+
+an ARMA(6 or 11,0) model, that is, an autoregressive model of order p=6, since the partial autocorrelogram is zero after lag 6, and the autocorrelogram tails off to zero (although perhaps too abruptly for this model to be appropriate)
+an ARMA(0,1) model, that is, a moving average model of order q=1, since the autocorrelogram is zero after lag 1 and the partial autocorrelogram tails off to zero
+an ARMA(p,q) model, that is, a mixed model with p and q greater than 0, since the autocorrelogram and partial correlogram tail off to zero (although the correlogram probably tails off to zero too abruptly for this model to be appropriate)
+
+AR(1), differential(2), MA(0)
+
+```{r}
+# A specification of the non-seasonal part of the ARIMA model: the three components (p, d, q) are the AR order, the degree of differencing, and the MA order. ARMA(p,q)
+model2.arima120 <- arima(AAPL$close, order = c(1, 2, 0))
+model2.arima120_fitted <- AAPL$close - residuals(model2.arima120)
+model2.arima120
 ```
 
 ```{r}
-plot(AAPL$close, type = "l", col = 2, lty = 2)
-#points(AAPL_ts_fitted, type = "l", col = 2, lty = 2)
+plot(AAPL$close, type = "l", col = 4, lty = 1)
+points(model2.arima120_fitted, type = "l", col = 2, lty = 2)
+```
+
+AR(1), differential(2), MA(6)
+
+```{r}
+# A specification of the non-seasonal part of the ARIMA model: the three components (p, d, q) are the AR order, the degree of differencing, and the MA order.
+model2.arima021 <- arima(AAPL$close, order = c(0, 2, 1))
+model2.arima021_fitted <- AAPL$close - residuals(model2.arima021)
+model2.arima021
 ```
 
 ```{r}
-data.frame(close=AAPL_ts) %>% ggplot(aes(x=AAPL$date, y=close)) + geom_line()
+plot(AAPL$close, type = "l", col = 4, lty = 1)
+points(model2.arima021_fitted, type = "l", col = 2, lty = 2)
 ```
+
+```{r}
+# A specification of the non-seasonal part of the ARIMA model: the three components (p, d, q) are the AR order, the degree of differencing, and the MA order.
+model2.arima620 <- arima(AAPL$close, order = c(6, 2, 0))
+model2.arima620_fitted <- AAPL$close - residuals(model2.arima620)
+model2.arima620
+```
+
+```{r}
+plot(AAPL$close, type = "l", col = 4, lty = 1)
+points(model2.arima620_fitted, type = "l", col = 2, lty = 2)
+```
+
+```{r}
+# A specification of the non-seasonal part of the ARIMA model: the three components (p, d, q) are the AR order, the degree of differencing, and the MA order.
+model2.arima621 <- arima(AAPL$close, order = c(6, 2, 1))
+model2.arima621_fitted <- AAPL$close - residuals(model2.arima621)
+model2.arima621
+```
+
+```{r}
+plot(AAPL$close, type = "l", col = 4, lty = 1)
+points(model2.arima621_fitted, type = "l", col = 2, lty = 2)
+```
+
+```{r}
+library("forecast")
+AAPLforecast <- forecast(model2.arima021, h=150)
+AAPLforecast
+```
+
+```{r}
+autoplot(AAPLforecast)
+```
+
 
 
 ### Model 3
