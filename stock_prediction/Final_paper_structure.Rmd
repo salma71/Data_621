@@ -35,6 +35,7 @@ library(quantmod)
 library(data.table)
 library(car)
 library(caret)
+library(nlme)
 ```
 
 
@@ -250,8 +251,72 @@ results <- results %>% mutate(pred.class = as.factor(pred), target.class = as.fa
 print(confusionMatrix(results$pred.class,results$target.class, positive = "1"))
 ```
 
-### Model 2
+### Model 2 - Autoregressive Model
 
+
+```{r}
+acf(AAPL$close)
+```
+
+```{r}
+pacf(AAPL$close)
+```
+
+
+```{r}
+t <- AAPL$close[-1]
+t_1 <- AAPL$close[-length(AAPL$close)]
+m2.lm <- lm(t ~ t_1)
+summary(m2.lm)
+```
+
+```{r}
+plot(t_1, t)
+abline(m2.lm, col=3, lwd=2)
+```
+
+#### Generalized Least Squares
+
+```{r}
+AAPL_ts <- ts(AAPL$close, start=c(2014, 2, 21), end=c(2019, 2, 20), frequency=200)
+AAPL_close <- ts(AAPL$close)
+```
+
+
+```{r}
+m2.gls <- gls(AAPL_close ~ time(AAPL_close), correlation = corAR1(form=~1))
+summary(m2.gls)$tTable
+```
+
+```{r}
+ar(AAPL_close)
+```
+
+```{r}
+m2.gls2 <- gls(AAPL_close ~ time(AAPL_close), correlation = corARMA(p=2))
+summary(m2.gls2)
+```
+
+
+```{r}
+model2.arima <- arima(AAPL_close, order = c(2, 0, 0))
+model2.arima_fitted <- AAPL_close - residuals(model2.arima)
+model2.arima
+```
+
+```{r}
+plot(AAPL_ts)
+#points(AAPL_ts_fitted, type = "l", col = 2, lty = 2)
+```
+
+```{r}
+plot(AAPL$close, type = "l", col = 2, lty = 2)
+#points(AAPL_ts_fitted, type = "l", col = 2, lty = 2)
+```
+
+```{r}
+data.frame(close=AAPL_ts) %>% ggplot(aes(x=AAPL$date, y=close)) + geom_line()
+```
 
 
 ### Model 3
