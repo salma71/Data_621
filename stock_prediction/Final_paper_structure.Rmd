@@ -279,6 +279,7 @@ abline(m2.lm, col=3, lwd=2)
 #### Generalized Least Squares
 
 ```{r}
+# Assuming 200 trading days in a year
 AAPL_ts <- ts(AAPL$close, start=c(2014, 2, 21), end=c(2019, 2, 20), frequency=200)
 AAPL_close <- ts(AAPL$close)
 ```
@@ -300,7 +301,7 @@ ar(AAPL_close)
 
 #### ARIMA
 
-Time series needs to be stationary. The higher order differentials have mean 0 but the varaince seems to increase in the last part of the series. 
+Time series needs to be stationary. The higher order differentials have mean 0 but the varaince seems to increase in the last part of the series. Below we series the series differentiated to the first and second order.
 
 ```{r}
 par(mfrow=c(2,1))
@@ -310,7 +311,9 @@ plot.ts(APPLdiff1)
 plot.ts(APPLdiff2)
 ```
 
-Order 1 differential
+##### Order 1 differential
+
+The order 1 differential shows rhe highest correlation at position 0, while the partial ACF seenms to show periodic behavior with a few significant lags which does not tell us much.
 
 ```{r}
 par(mfrow=c(1,2))
@@ -320,7 +323,9 @@ acf(APPLdiff1, lag.max=20, plot=FALSE)
 pacf(APPLdiff1, lag.max=20, plot=FALSE)
 ```
 
-Order 2 differential
+##### Order 2 differential
+
+On the other hand, the order two differential has several meaningful lags we can use, and the partial ACF decays.
 
 ```{r}
 par(mfrow=c(1,2))
@@ -334,23 +339,51 @@ The partial correlogram shows that the partial autocorrelations at lags 1-6, 8-1
 
 Since the correlogram is zero after lag 1, and the partial correlogram tails off to zero after lag 6 (or 11), this means that the following ARMA (autoregressive moving average) models are possible for the time series of first differences:
 
-an ARMA(6 or 11,0) model, that is, an autoregressive model of order p=6, since the partial autocorrelogram is zero after lag 6, and the autocorrelogram tails off to zero (although perhaps too abruptly for this model to be appropriate)
-an ARMA(0,1) model, that is, a moving average model of order q=1, since the autocorrelogram is zero after lag 1 and the partial autocorrelogram tails off to zero
-an ARMA(p,q) model, that is, a mixed model with p and q greater than 0, since the autocorrelogram and partial correlogram tail off to zero (although the correlogram probably tails off to zero too abruptly for this model to be appropriate)
+* an ARMA(6 or 11,0) model, that is, an autoregressive model of order p=6, since the partial autocorrelogram is zero after lag 6, and the autocorrelogram tails off to zero (although perhaps too abruptly for this model to be appropriate)
+* an ARMA(0,1) model, that is, a moving average model of order q=1, since the autocorrelogram is zero after lag 1 and the partial autocorrelogram tails off to zero
+* an ARMA(p,q) model, that is, a mixed model with p and q greater than 0, since the autocorrelogram and partial correlogram tail off to zero (although the correlogram probably tails off to zero too abruptly for this model to be appropriate)
 
 AR(1), differential(2), MA(0)
 
 ```{r}
-# A specification of the non-seasonal part of the ARIMA model: the three components (p, d, q) are the AR order, the degree of differencing, and the MA order. ARMA(p,q)
-model2.arima120 <- arima(AAPL$close, order = c(1, 2, 0))
-model2.arima120_fitted <- AAPL$close - residuals(model2.arima120)
-model2.arima120
+arimadf <- tibble(model=character(), coef=character(), loglik=numeric(), aic=numeric()) 
+
+arimamodels <- function(p,d,q) {
+  # A specification of the non-seasonal part of the ARIMA model: the three components (p, d, q) are the AR order, the degree of differencing, and the MA order. ARMA(p,q)
+  arima.model <- arima(AAPL$close, order = c(p,d,q))
+  arima.model_fitted <- AAPL$close - residuals(arima.model)
+  df <- tibble(model=paste0(p,d,q), coef=paste0(list(round(arima.model$coef,3)), loglik=arima.model$loglik, aic=arima.model$aic))
+  return.list <- list(model=arima.model,fitted=arima.model_fitted, df=df)
+  return(return.list)
+}
 ```
 
 ```{r}
-plot(AAPL$close, type = "l", col = 4, lty = 1)
-points(model2.arima120_fitted, type = "l", col = 2, lty = 2)
+m120 <- arimamodels(p=1, d=2, q=0)
+arimadf <- rbind(arimadf, m120$df)
+m021 <- arimamodels(0, 2, 1)
+arimadf <- rbind(arimadf, m021$df)
+m620 <- arimamodels(6, 2, 0)
+arimadf <- rbind(arimadf, m620$df)
+m621 <- arimamodels(6, 2, 1)
+arimadf <- rbind(arimadf, m621$df)
+
+arimadf
 ```
+
+```{r}
+par(mfrow=c(2,2))
+#plot(AAPL$close, type = "l", col = 4, lty = 1)
+plot(m120$fitted, type = "l", col = 2, lty = 2)
+#plot(AAPL$close, type = "l", col = 4, lty = 1)
+plot(m021$fitted, type = "l", col = 2, lty = 2)
+#plot(AAPL$close, type = "l", col = 4, lty = 1)
+plot(m620$fitted, type = "l", col = 2, lty = 2)
+#plot(AAPL$close, type = "l", col = 4, lty = 1)
+plot(m621$fitted, type = "l", col = 2, lty = 2)
+```
+
+
 
 AR(1), differential(2), MA(6)
 
@@ -366,33 +399,10 @@ plot(AAPL$close, type = "l", col = 4, lty = 1)
 points(model2.arima021_fitted, type = "l", col = 2, lty = 2)
 ```
 
-```{r}
-# A specification of the non-seasonal part of the ARIMA model: the three components (p, d, q) are the AR order, the degree of differencing, and the MA order.
-model2.arima620 <- arima(AAPL$close, order = c(6, 2, 0))
-model2.arima620_fitted <- AAPL$close - residuals(model2.arima620)
-model2.arima620
-```
-
-```{r}
-plot(AAPL$close, type = "l", col = 4, lty = 1)
-points(model2.arima620_fitted, type = "l", col = 2, lty = 2)
-```
-
-```{r}
-# A specification of the non-seasonal part of the ARIMA model: the three components (p, d, q) are the AR order, the degree of differencing, and the MA order.
-model2.arima621 <- arima(AAPL$close, order = c(6, 2, 1))
-model2.arima621_fitted <- AAPL$close - residuals(model2.arima621)
-model2.arima621
-```
-
-```{r}
-plot(AAPL$close, type = "l", col = 4, lty = 1)
-points(model2.arima621_fitted, type = "l", col = 2, lty = 2)
-```
 
 ```{r}
 library("forecast")
-AAPLforecast <- forecast(model2.arima021, h=150)
+AAPLforecast <- forecast(m021$model, h=150)
 AAPLforecast
 ```
 
@@ -400,6 +410,62 @@ AAPLforecast
 autoplot(AAPLforecast)
 ```
 
+### Forecast vs Actual
+
+Using 70% training data
+
+```{r}
+AAPLsubset <- AAPL$close[1:round(0.7*length(AAPL$close))] 
+model3.arima021 <- arima(AAPLsubset, order = c(0, 2, 1))
+model3.arima021_fitted <- AAPLsubset - residuals(model3.arima021)
+model3.arima021
+```
+
+
+```{r}
+boundary <- round(length(AAPL$close)*.7)
+end <- length(AAPL$close)
+data <- tibble(date=AAPL$date, price=AAPL$close, prediction = NA, fitted=NA, Low95 = NA,
+         Low80 = NA,
+         High95 = NA,
+         High80 = NA)
+
+
+AAPLsubsetforecast <- forecast(model3.arima021, h=377)
+forecast_df <- fortify(as.data.frame(AAPLsubsetforecast)) %>% as_tibble()
+forecast_df <- forecast_df %>%
+  rename("Low95" = "Lo 95",
+         "Low80" = "Lo 80",
+         "High95" = "Hi 95",
+         "High80" = "Hi 80",
+         "Forecast" = "Point Forecast")
+
+#data[boundary:end,3:7] <- forecast_df
+
+data$fitted <- c(as.vector(model3.arima021_fitted),rep(NA,(end-boundary)))
+data$prediction <- c(rep(NA,boundary),forecast_df$Forecast)
+data$Low80 <- c(rep(NA,boundary),forecast_df$Low80)
+data$High80 <- c(rep(NA,boundary),forecast_df$High80)
+data$Low95 <- c(rep(NA,boundary),forecast_df$Low95)
+data$High95 <- c(rep(NA,boundary),forecast_df$High95)
+
+tail(data)
+```
+```{r}
+ggplot(data, aes(x = date)) + 
+  geom_ribbon(aes(ymin = Low95, ymax = High95, fill = "95%")) +
+  geom_ribbon(aes(ymin = Low80, ymax = High80, fill = "80%")) +
+  geom_point(aes(y = price, colour = "price"), size = 1) +
+  geom_line(aes(y = price, group = 1, colour = "price"), 
+            linetype = "dotted", size = 0.75) +
+  geom_line(aes(y = fitted, group = 2, colour = "fitted"), size = 0.75) +
+  geom_line(aes(y = prediction, group = 3, colour = "prediction"), size = 0.75) +
+  scale_x_date(breaks = scales::pretty_breaks(), date_labels = "%b %y") +
+  scale_colour_brewer(name = "Legend", type = "qual", palette = "Dark2") +
+  scale_fill_brewer(name = "Intervals") +
+  guides(colour = guide_legend(order = 1), fill = guide_legend(order = 2)) +
+  theme_bw(base_size = 14)
+```
 
 
 ### Model 3
