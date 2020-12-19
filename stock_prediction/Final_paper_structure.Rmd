@@ -1,5 +1,5 @@
 ---
-title: "Predicting the Stock Prices"
+title: "DATA 621 Final Project - Stock Predictions Methods"
 author: |
   | **Dhairav Chhatbar, Mael Illien, Salma Elshahawy**
   | DATA 621, Master of Science in Data Science,
@@ -54,9 +54,11 @@ There are a few ways of predicting stock prices. From blind guessing to machine 
 
 Since predicting the exact percent increase of a stock the next day is difficult, we can instead try instead to predict the direction of the movement. Alternatively, we can look at the trends and seasonality in the data and try to predict with some level of confidence where the price would like in an arbitrary number of days.
 
-In this paper, we will implementing models using logistic regression, panel regresssion, generalized least squares (maybe) and autoregressive models using ARIMA.
+In this paper, we implemented models using logistic regression, panel regresssion, generalized least squares (maybe) and autoregressive models using ARIMA.
 
-The logistic models are garbage lol.
+The logistic models which try to predict the direction of the next day's movement yielded poor results. Hardly any of the predictor variable were significant, and the classification accuracies were around 52% which is hardly better than guessing. On the other hand, the auto-regressive models that predict subsequent values of a stock time series were of greater use. This required finding a suitable combination of parameters to fit the data closely. 
+
+The panel models
 
 
 
@@ -72,13 +74,9 @@ Select a few key words (up to five) related to your work.
 # Introduction
 Describe the background and motivation of your problem.
 
-Background:
-- Predicting stock prices or stock movements
-Motivation
-- Wealth of data available in finance 
+Finding reliable ways to predict stock prices is a difficult exercise and the methods used often yield unsatisfactory results. A lot of stock market data is readily available and it is important to find significant predictors variables amongst all the options. If we believe that the price of a stock, or the direction of its movement can be predicted using recent information then we can look at variables associated with recent movements with indicators such as RSI or moving averages as well as intraday variatioins in price via the OHLC prices.
 
-For the Final Project, we intend to analyze and predict stocks' outcome based on the historical end of trading day data for 30 companies on the Dow Jones Industrial Average. For each company, there are five years of historical trading data up to February 2019. 
-
+If on other the hand we believe that trends and long term movements are a better way to predict prices then time series analysis can be used. The analysist consist of comparing a series of prices such as the close price of a stock with a lagged or shifted version of itself in orde to discern any temporal correlations. This technique requires certain assumptions to be met that require transformations of the data. Through different modeling approaches and parameter tuning, we can prediction what future prices will be to a certain degree of confidence. 
 
 
 # Literature Review
