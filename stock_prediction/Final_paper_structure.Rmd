@@ -5,14 +5,18 @@ author: |
   | DATA 621, Master of Science in Data Science,
   | City University of New York
 link-citations: yes
-output:
+output: 
   html_document:
+    code_folding: hide
+    theme: cosmo
+    highlight: tango
+    toc: true
+    number_section: false
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
     df_print: paged
-    toc: no
-  pdf_document:
-    df_print: kable
-    fig_caption: yes
-    toc: no
+---
 nocite: |
   @wickham_ggplot2_2009, @RCoreTeam, @Chang2015
 bibliography: citations.bib
@@ -39,33 +43,42 @@ library(caret)
 library(nlme)
 ```
 
-
-# Models to try (remove later)
-
-1. Logistic (direction of price movement, up or down)
-2. Generalized least squares, auto-regressive model (time series prediction), ARMA, Prophet
-
 # Abstract
 Use 250 words or less to summarize your problem, methodology, and major outcomes.
 
 Problem:
-
 Methodology:
-
 Major Outcomes:
+
+There are a few ways of predicting stock prices. From blind guessing to machine learning, many techniques have been tested to try to achieve decent results. Capturing the complexity of the market in a model is a daunting task but it can be broken down in a number of appraoches. 
+
+Since predicting the exact percent increase of a stock the next day is difficult, we can instead try instead to predict the direction of the movement. Alternatively, we can look at the trends and seasonality in the data and try to predict with some level of confidence where the price would like in an arbitrary number of days.
+
+In this paper, we will implementing models using logistic regression, panel regresssion, generalized least squares (maybe) and autoregressive models using ARIMA.
+
+The logistic models are garbage lol.
+
+
+
 
 # Key Words
 Select a few key words (up to five) related to your work.
 
+1. Time series
+2. Logistic regression
+3. Auto-regressive models
+4. Panel regression
 
 # Introduction
 Describe the background and motivation of your problem.
 
 Background:
 - Predicting stock prices or stock movements
-
 Motivation
 - Wealth of data available in finance 
+
+For the Final Project, we intend to analyze and predict stocks' outcome based on the historical end of trading day data for 30 companies on the Dow Jones Industrial Average. For each company, there are five years of historical trading data up to February 2019. 
+
 
 
 # Literature Review
@@ -84,6 +97,24 @@ Discuss the key aspects of your problem, data set and regression model(s). Given
 Describe the specifics of what you did (data exploration, data preparation, model building, model selection, model evaluation, etc.), and what you found out (statistical analyses, interpretation and discussion of the results, etc.).
 
 ### Data Description
+
+The variables description are as follows:
+
+| Variable          | Description                                                                                                                                                                         
+|-------------------|---------------------------
+| date              | Trading Date                                                                                             
+| open              | Price of the stock at market open                                                                                                                                                              
+| high              | Highest price reached in the trade day                                                                                                     
+| low               | Lowest price reached in the trade day                                                                                                      
+| close             | Price of the stock at market close      
+| volume            | Number of shares traded 	
+| unadjustedVolume  | Volume for stocks, unadjusted by stock splits                                                                                                                      
+| change           	| Change in closing price from prior trade day close                                                                                                                       
+| changePercent     | Percentage change in closing price from prior trade day close                                                                                                                      
+| vwap              | Volume weighted average price (VWAP) is the ratio of the value traded to total volume traded                                                                                                          
+| label           	| Trading Date                                                                                                                       
+| changeOverTime    | Percent change of each interval relative to first value. Useful for comparing multiple stocks.                                                                                                                         
+| ticker            | Abbreviation used to uniquely identify publicly traded shares
 
 ```{r message=FALSE, warning=FALSE}
 dataset <- read_csv('https://raw.githubusercontent.com/salma71/Data_621/master/Project_Proposal/stocks_combined.csv')
