@@ -42,6 +42,7 @@ library(car)
 library(caret)
 library(nlme)
 library(kableExtra)
+library(tseries)
 ```
 
 # Abstract
@@ -269,10 +270,11 @@ The first logistic model yields unsatisfactory results. Only the `close` variabl
 ```{r}
 model.full <- build_model('model.full', "TARGET ~ .", data = AAPL_model1_data)
 models.df <- rbind(models.df,model.full$df_info)
-summary(model.full)
+#summary(model.full)
 ```
 
 ```{r echo=FALSE}
+print("VIF:")
 car::vif(model.full$model)
 ```
 
@@ -297,7 +299,7 @@ m1c_data$Close2Open <- m1c_data$open - shift(m1c_data$close, n=1, fill=NA, type=
 m1c_data$Open2Open <- m1c_data$open - shift(m1c_data$open, n=1, fill=NA, type="lag")
 m1c_data_trimmed <- m1c_data %>% select(-c(open,high,low,vwap,change,macd)) %>% drop_na()
 
-model.m1c  <- build_model('model.m1c', "NOCORR:TARGET ~ .", data = m1c_data_trimmed )
+model.m1c  <- build_model('model.m1c', "TARGET ~ .", data = m1c_data_trimmed )
 models.df <- rbind(models.df,model.m1c$df_info)
 summary(model.m1c)
 ```
@@ -314,10 +316,14 @@ The results of the logistic models are displayed below. The in-sample testing ac
 models.df
 ```
 
-### Model 2 - Autoregressive Model
+#### Model 2 - Autoregressive Model
+
+In this section we drop all the predictors but the close price of the time series. We only use information contain the series itself to fit a model and make predictions. The AAPL stock price had an underlying trend but large fluctuations. We need to verify if certain conditions are met in order to model this time series. We first look at the autocorrelation of the series and see that the series is highly correlated with its previous values with a significant lag. We also consider the PACF which removes variations explained by earlier lags so we get only the relevant features.
+
+Identification of an AR model is often done using the PACF while MA models use the ACF. The order of the model is determined by the numer of significant lags taken into account. The PACF suggests ar AR(1) model and a regression line of time t onto time t-1 shows a close linear fit and a highly statistical coefficient of approximately 1 for `t-1`. However, the slowly decaying ACF suggests that the series is not stationary and that some degree of differentiation might be required to stabilize the mean.
 
 
-```{r fig.height=3, fig.width=3}
+```{r}
 par(mfrow=c(3,1))
 acf(AAPL$close)
 pacf(AAPL$close)
@@ -330,39 +336,53 @@ plot(t_1, t)
 abline(m2.lm, col=3, lwd=2)
 ```
 
-
-
 ```{r}
 summary(m2.lm)
 ```
 
-
-#### Generalized Least Squares
-
-```{r}
-# Assuming 200 trading days in a year
-AAPL_ts <- ts(AAPL$close, start=c(2014, 2, 21), end=c(2019, 2, 20), frequency=200)
-AAPL_close <- ts(AAPL$close)
-```
-
+We use the generalized least squares method to obtain more information on the mode. We specify an error correlation structure of order 1. 
 
 ```{r}
 m2.gls <- gls(AAPL_close ~ time(AAPL_close), correlation = corAR1(form=~1))
-summary(m2.gls)$tTable
+summary(m2.gls)
+```
+
+We test the justification of the added autoregressive structure using a likelyhood ratio test. With a very small p value, we can reject the null hypothesis that the added term is not necessary.
+
+```{r}
+m2.gls.0 <- update(m2.gls, correlation=NULL)
+anova(m2.gls, m2.gls.0) # AR(1) vs Uncorrelated errors
+```
+
+
+Fitting an AR(1) model using the `ar` function confirms the coefficient of approxmiately 1 (0.997).
+
+```{r}
+m2.ar1 <- ar(AAPL_close)
+m2.ar1_fitted <- AAPL$close - residuals(m2.ar1)
+m2.ar1
 ```
 
 ```{r}
-ar(AAPL_close)
+plot(AAPL$close, type = "l", col = 4, lty = 1)
+points(m2.ar1_fitted, type = "l", col = 2, lty = 2)
 ```
 
+We noted earlier that the decay structure of the ACF suggested that the series is not stationary. We verify this claim using the Dickey Fuller tests below. The null hypothesis that the series is not stationary is not rejected for the original series, but rejected for the once differentiated series. Therefore, the original series is not stationary and should be differentiated to stabilize the mean.
+
+
 ```{r}
-#m2.gls2 <- gls(AAPL_close ~ time(AAPL_close), correlation = corARMA(p=2))
-#summary(m2.gls2)
+print('DFT on time series:')
+adf.test(AAPL_close)
+print('DFT on differentiated time series:')
+adf.test(diff(AAPL$close, differences=1))
 ```
 
 #### ARIMA
 
 Time series needs to be stationary. The higher order differentials have mean 0 but the varaince seems to increase in the last part of the series. Below we series the series differentiated to the first and second order.
+
+Stabilize the mean
 
 ```{r}
 par(mfrow=c(2,1))
