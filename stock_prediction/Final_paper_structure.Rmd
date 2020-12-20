@@ -314,31 +314,28 @@ The results of the logistic models are displayed below. The in-sample testing ac
 models.df
 ```
 
-
-
 ### Model 2 - Autoregressive Model
 
 
-```{r}
+```{r fig.height=3, fig.width=3}
+par(mfrow=c(3,1))
 acf(AAPL$close)
-```
-
-```{r}
 pacf(AAPL$close)
-```
 
-
-```{r}
 t <- AAPL$close[-1]
 t_1 <- AAPL$close[-length(AAPL$close)]
 m2.lm <- lm(t ~ t_1)
-summary(m2.lm)
-```
 
-```{r}
 plot(t_1, t)
 abline(m2.lm, col=3, lwd=2)
 ```
+
+
+
+```{r}
+summary(m2.lm)
+```
+
 
 #### Generalized Least Squares
 
