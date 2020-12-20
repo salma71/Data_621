@@ -206,8 +206,6 @@ AAPL_full %>%
   facet_wrap(~key, scales = 'free')
 ```
 
-
-
 ```{r}
 library(corrplot)
 corr_dataframe <- AAPL_model1_data %>% mutate_if(is.factor, as.numeric)
@@ -220,84 +218,103 @@ corrplot( corr.d, type = "upper", diag = FALSE )
 AAPL_model1_data %>% ggplot(aes(x=TARGET)) + geom_histogram(stat="count")
 ```
 
-### Model 1 (Logistic)
+### Modeling
+
+#### Model 1 (Logistic)
+
+```{r}
+# Initialize a df that will store the metrics of models
+models.df <- tibble(id=character(), formula=character(), res.deviance=numeric(), null.deviance=numeric(),
+                 aic=numeric(), accuracy=numeric(), sensitivity=numeric(), specificity=numeric(),
+                precision.deviance=numeric(), stringsAsFactors=FALSE) 
+```
+
+
+```{r include=FALSE}
+# A function to extract the relevant metrics from the summary and confusion matrix
+build_model <- function(id, formula, data) {
+  glm.fit <- glm(formula, data=data, family=binomial(link="logit"))
+  print(summary(glm.fit))
+  glm.probs <- predict(glm.fit, type="response")
+  # Confirm the 0.5 threshold
+  glm.pred <- ifelse(glm.probs > 0.5, 1, 0)
+  results <- tibble(target=data$TARGET, pred=glm.pred)
+  results <- results %>%
+    mutate(pred.class = as.factor(pred), target.class = as.factor(target))
+  
+  #print(confusionMatrix(results$pred.class,results$target.class, positive = "1"))
+  
+  acc <- confusionMatrix(results$pred.class,results$target.class, positive = "1")$overall['Accuracy']
+  sens <- confusionMatrix(results$pred.class,results$target.class, positive = "1")$byClass['Sensitivity']
+  spec <- confusionMatrix(results$pred.class,results$target.class, positive = "1")$byClass['Specificity']
+  prec <- confusionMatrix(results$pred.class,results$target.class, positive = "1")$byClass['Precision']
+  res.deviance <- glm.fit$deviance
+  null.deviance <- glm.fit$null.deviance  
+  aic <- glm.fit$aic
+  metrics <- list(res.deviance=res.deviance, null.deviance=null.deviance,aic=aic, accuracy=acc, sensitivity=sens, specificity=spec, precision=prec)
+  metrics <- lapply(metrics, round, 3)
+  
+  #plot(roc(results$target.class,glm.probs), print.auc = TRUE)
+  model.df <- tibble(id=id, formula=formula, res.deviance=metrics$res.deviance, null.deviance=metrics$null.deviance, 
+                         aic=metrics$aic, accuracy=metrics$accuracy, sensitivity=metrics$sensitivity, specificity=metrics$specificity, precision=metrics$precision)
+  model.list <- list(model=glm.fit, df_info=model.df)
+  return(model.list)
+}
+```
 
 #### M1A Full Model
 
+The first logistic model yields unsatisfactory results. Only the `close` variable is significant. It is revealed that a lot of the variables are  multicollinear. This makes sense given that a number of variables are related to the price are generally move together (close, open, low, high), and some are derived from other variables. The model should be reduced by removing the least significant predictors until the model is significant.
 
 ```{r}
-model.full <- glm(TARGET ~ .,
-                 data=AAPL_model1_data,
-                 family = binomial(link="logit")
-                 )
+model.full <- build_model('model.full', "TARGET ~ .", data = AAPL_model1_data)
+models.df <- rbind(models.df,model.full$df_info)
 summary(model.full)
 ```
 
-```{r}
-car::vif(model.full)
-```
-
-```{r}
-glm.probs <- predict(model.full, type="response")
-glm.pred <- ifelse(glm.probs > 0.5, 1, 0)
-results <- tibble(target=AAPL_model1_data$TARGET, pred=glm.pred)
-results <- results %>% mutate(pred.class = as.factor(pred), target.class = as.factor(target))
-print(confusionMatrix(results$pred.class,results$target.class, positive = "1"))
+```{r echo=FALSE}
+car::vif(model.full$model)
 ```
 
 
 #### M1B Small Model
 
-The smaller model leads to a nonsensical results where the two variables cancel each other out. Multi-collinearity issue.
+Reducing the model down to only the significant predictors leads to a nonsensical results where the two variables cancel each other out.
 
 ```{r}
-model.small <- glm(TARGET ~ .-vol5 -high -rsi -open -vol1-changePercent-low-macd-m20-volume-unadjustedVolume-m5-change,
-                 data=AAPL_model1_data,
-                 family = binomial(link="logit")
-                 )
+model.small <- build_model('model.small', "TARGET ~ .-vol5 -high -rsi -open -vol1-changePercent-low-macd-m20-volume-unadjustedVolume-m5-change", data = AAPL_model1_data)
+models.df <- rbind(models.df,model.small$df_info)
 summary(model.small)
 ```
 
-```{r}
-glm.probs <- predict(model.small, type="response")
-glm.pred <- ifelse(glm.probs > 0.5, 1, 0)
-results <- tibble(target=AAPL_model1_data$TARGET, pred=glm.pred)
-results <- results %>% mutate(pred.class = as.factor(pred), target.class = as.factor(target))
-print(confusionMatrix(results$pred.class,results$target.class, positive = "1"))
-```
-
 #### M1C Multicollinearity Removed
+
+This model removes a lot of the predictors (open,high,low,vwap,change,macd) but adds `Close2Open` and `Open2Open` in order to  try to retain some information from the variables that were dropped. The removed variables were determined to be too correlated and we retained only the predictors with Variance Inflation Factors below an allowable treshold as seen below. Unfortunately, this model also lacks significance.
 
 ```{r}
 m1c_data <- AAPL_model1_data
 m1c_data$Close2Open <- m1c_data$open - shift(m1c_data$close, n=1, fill=NA, type="lag")
 m1c_data$Open2Open <- m1c_data$open - shift(m1c_data$open, n=1, fill=NA, type="lag")
-
 m1c_data_trimmed <- m1c_data %>% select(-c(open,high,low,vwap,change,macd)) %>% drop_na()
-```
 
-
-This suggests removing open, high and low. Use Close-Close, Close-Open Insteadd
-
-```{r}
-m1c.full <- glm(TARGET ~ .,
-                 data=m1c_data_trimmed,
-                 family = binomial(link="logit")
-                 )
-summary(m1c.full)
+model.m1c  <- build_model('model.m1c', "NOCORR:TARGET ~ .", data = m1c_data_trimmed )
+models.df <- rbind(models.df,model.m1c$df_info)
+summary(model.m1c)
 ```
 
 ```{r}
-car::vif(m1c.full)
+car::vif(model.m1c$model)
 ```
 
+#### Logistic Model Results
+
+The results of the logistic models are displayed below. The in-sample testing accuracy is fairly low at 52%. No model has a particular edge so we proceed to move on to other types of model. This exercise could be enhanced by using data from other stocks by removing all the variables that are stock dependent. Additionally, more target could be used such as the the direction of the price movement over 5 days or 20 days. 
+
 ```{r}
-glm.probs <- predict(m1c.full, type="response")
-glm.pred <- ifelse(glm.probs > 0.5, 1, 0)
-results <- tibble(target=m1c_data_trimmed$TARGET, pred=glm.pred)
-results <- results %>% mutate(pred.class = as.factor(pred), target.class = as.factor(target))
-print(confusionMatrix(results$pred.class,results$target.class, positive = "1"))
+models.df
 ```
+
+
 
 ### Model 2 - Autoregressive Model
 
