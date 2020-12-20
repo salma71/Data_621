@@ -354,6 +354,11 @@ m2.gls.0 <- update(m2.gls, correlation=NULL)
 anova(m2.gls, m2.gls.0) # AR(1) vs Uncorrelated errors
 ```
 
+```{r}
+m2.gls_fitted <- AAPL_close - residuals(m2.gls)
+plot(AAPL$close, type = "l", col = 4, lty = 1)
+points(m2.gls_fitted, type = "l", col = 2, lty = 2)
+```
 
 Fitting an AR(1) model using the `ar` function confirms the coefficient of approxmiately 1 (0.997).
 
@@ -368,10 +373,10 @@ plot(AAPL$close, type = "l", col = 4, lty = 1)
 points(m2.ar1_fitted, type = "l", col = 2, lty = 2)
 ```
 
-We noted earlier that the decay structure of the ACF suggested that the series is not stationary. We verify this claim using the Dickey Fuller tests below. The null hypothesis that the series is not stationary is not rejected for the original series, but rejected for the once differentiated series. Therefore, the original series is not stationary and should be differentiated to stabilize the mean.
+We noted earlier that the slowly decaying structure of the ACF suggested that the series is not stationary. We verify this claim using the Dickey Fuller tests below. The null hypothesis that the series is not stationary is not rejected for the original series, but rejected for the once differentiated series. Therefore, the original series is not stationary and should be differentiated to stabilize the mean.
 
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 print('DFT on time series:')
 adf.test(AAPL_close)
 print('DFT on differentiated time series:')
@@ -380,51 +385,47 @@ adf.test(diff(AAPL$close, differences=1))
 
 #### ARIMA
 
-Time series needs to be stationary. The higher order differentials have mean 0 but the varaince seems to increase in the last part of the series. Below we series the series differentiated to the first and second order.
-
-Stabilize the mean
+Here we look at the first two differentials. The higher order differentials have mean 0 but the variance seems to increase in the last part of the series. 
 
 ```{r}
 par(mfrow=c(2,1))
 APPLdiff1 <- diff(AAPL$close, differences=1)
 APPLdiff2 <- diff(AAPL$close, differences=2)
-plot.ts(APPLdiff1)
-plot.ts(APPLdiff2)
 ```
 
 ##### Order 1 differential
 
-The order 1 differential shows rhe highest correlation at position 0, while the partial ACF seenms to show periodic behavior with a few significant lags which does not tell us much.
+The order 1 differential shows the highest correlation at position 0 and a significant lag at position 6, while the partial ACF seenms to show periodic behavior with a few significant lags at 7 and 8.
 
 ```{r}
-par(mfrow=c(1,2))
+par(mfrow=c(2,2))
 acf(APPLdiff1, lag.max=20)             
 pacf(APPLdiff1, lag.max=20)
-acf(APPLdiff1, lag.max=20, plot=FALSE) 
-pacf(APPLdiff1, lag.max=20, plot=FALSE)
+plot.ts(APPLdiff1)
 ```
+
 
 ##### Order 2 differential
 
-On the other hand, the order two differential has several meaningful lags we can use, and the partial ACF decays.
+On the other hand, the order two differential has several meaningful lags at position 1 and 7, and the partial ACF decays and stays significant until lag 6.
 
 ```{r}
-par(mfrow=c(1,2))
-acf(APPLdiff2, lag.max=20)             # plot a correlogram
-acf(APPLdiff2, lag.max=20, plot=FALSE) # get the autocorrelation values
-pacf(APPLdiff2, lag.max=20)             
-pacf(APPLdiff2, lag.max=20, plot=FALSE)
+par(mfrow=c(2,2))
+acf(APPLdiff2, lag.max=20)             
+pacf(APPLdiff2, lag.max=20)
+plot.ts(APPLdiff2)
 ```
 
-The partial correlogram shows that the partial autocorrelations at lags 1-6, 8-11 exceed the significance bounds, are negative, and are slowly decreasing in magnitude with increasing lag. The partial autocorrelations tail off to zero after lag 11.
+Form these observations, we can study the following ARMA (autoregressive moving average) models are possible for the differentiated time series:
 
-Since the correlogram is zero after lag 1, and the partial correlogram tails off to zero after lag 6 (or 11), this means that the following ARMA (autoregressive moving average) models are possible for the time series of first differences:
+* First Order ARIMA(7,1,0): AR(7) high order on the autoregressive structure
+* First Order ARIMA(0,1,2): MA(1) moving average structure
+* First Order ARIMA(1,1,1): ARMA(1,1) combination
 
-* an ARMA(6 or 11,0) model, that is, an autoregressive model of order p=6, since the partial autocorrelogram is zero after lag 6, and the autocorrelogram tails off to zero (although perhaps too abruptly for this model to be appropriate)
-* an ARMA(0,1) model, that is, a moving average model of order q=1, since the autocorrelogram is zero after lag 1 and the partial autocorrelogram tails off to zero
-* an ARMA(p,q) model, that is, a mixed model with p and q greater than 0, since the autocorrelogram and partial correlogram tail off to zero (although the correlogram probably tails off to zero too abruptly for this model to be appropriate)
-
-AR(1), differential(2), MA(0)
+* Second Order ARIMA(1,2,0): AR(1) autoregressive struction
+* Second Order ARIMA(0,2,1): MA(1) moving average structure
+* Second Order ARIMA(6,2,0): AR(6) autoregressive struction
+* Second Order ARIMA(6,2,1): ARMA(6,1) combination
 
 ```{r}
 arimadf <- tibble(model=character(), coef=character(), loglik=numeric(), aic=numeric()) 
@@ -440,6 +441,15 @@ arimamodels <- function(p,d,q) {
 ```
 
 ```{r}
+# First order models
+m710 <- arimamodels(p=7, d=1, q=0)
+arimadf <- rbind(arimadf, m710$df)
+m012 <- arimamodels(p=0, d=1, q=2)
+arimadf <- rbind(arimadf, m012$df)
+m111 <- arimamodels(p=1, d=1, q=1)
+arimadf <- rbind(arimadf, m111$df)
+
+# Second order models
 m120 <- arimamodels(p=1, d=2, q=0)
 arimadf <- rbind(arimadf, m120$df)
 m021 <- arimamodels(0, 2, 1)
@@ -455,6 +465,17 @@ arimadf
 ```{r}
 par(mfrow=c(2,2))
 #plot(AAPL$close, type = "l", col = 4, lty = 1)
+plot(m710$fitted, type = "l", col = 2, lty = 2)
+#plot(AAPL$close, type = "l", col = 4, lty = 1)
+plot(m012$fitted, type = "l", col = 2, lty = 2)
+#plot(AAPL$close, type = "l", col = 4, lty = 1)
+plot(m111$fitted, type = "l", col = 2, lty = 2)
+```
+
+
+```{r}
+par(mfrow=c(2,2))
+#plot(AAPL$close, type = "l", col = 4, lty = 1)
 plot(m120$fitted, type = "l", col = 2, lty = 2)
 #plot(AAPL$close, type = "l", col = 4, lty = 1)
 plot(m021$fitted, type = "l", col = 2, lty = 2)
@@ -466,7 +487,7 @@ plot(m621$fitted, type = "l", col = 2, lty = 2)
 
 
 
-AR(1), differential(2), MA(6)
+Best Model:
 
 ```{r}
 # A specification of the non-seasonal part of the ARIMA model: the three components (p, d, q) are the AR order, the degree of differencing, and the MA order.
