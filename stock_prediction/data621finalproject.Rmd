@@ -45,28 +45,20 @@ library(kableExtra)
 library(plm)
 library(broom)
 library(tseries)
+library("forecast")
 ```
 
 # Abstract
-*Use 250 words or less to summarize your problem, methodology, and major outcomes.*
-
-Problem:
-Methodology:
-Major Outcomes:
 
 There are a few ways of predicting stock prices. From blind guessing to machine learning, many techniques have been tested to try to achieve decent results. Capturing the complexity of the market in a model is a daunting task but it can be broken down in a number of approaches. 
 
 Since predicting the exact percent increase of a stock the next day is difficult, we can instead try instead to predict the direction of the movement. Alternatively, we can look at the trends and seasonality in the data and try to predict with some level of confidence where the price would like in an arbitrary number of days.
 
-In this paper, we implemented models using logistic regression, panel regression, and autoregressive models using ARIMA.
-
 The logistic models which try to predict the direction of the next day's movement yielded poor results. Hardly any of the predictor variable were significant, and the classification accuracies were around 52% which is hardly better than guessing. Panel Regression as well as the autoregressive models using ARIMA attempt to predict closing prices of stocks using one stock at a time. Panel Regression attempts to build one model for any number of stocks across the same time periods. Doing this also yielded poor and sporadic results when predicting per stock. On the other hand, the auto-regressive models that predict subsequent values of a stock time series were of greater use. This required finding a suitable combination of parameters to fit the data closely. 
 
-
-
+*ADD PANEL INFO*
 
 # Key Words
-*Select a few key words (up to five) related to your work.*
 
 1. Time series
 2. Logistic regression
@@ -74,7 +66,6 @@ The logistic models which try to predict the direction of the next day's movemen
 4. Panel regression
 
 # Introduction
-*Describe the background and motivation of your problem.*
 
 Finding reliable ways to predict stock prices is a difficult exercise and the methods used often yield unsatisfactory results. A lot of stock market data is readily available and it is important to find significant predictors variables amongst all the options. If we believe that the price of a stock, or the direction of its movement can be predicted using recent information then we can look at variables associated with recent movements with indicators such as RSI or moving averages as well as intraday variations in price via the OHLC prices.
 
@@ -82,26 +73,20 @@ If on other the hand we believe that trends and long-term movements are a better
 
 
 # Methodology
-*Discuss the key aspects of your problem, data set and regression model(s). Given that you are working on real-world data, explain at a high-level your exploratory data analysis, how you prepared the data for regression modeling, your process for building regression models, and your model selection.*
 
-- EDA showing basic time series and indicators
-- Data preparation: create new variables? created an up/down indicator
-- Models to try
 
 The dataset is composed of a variety of stocks. For the purpose of brevity, the data exploration will be limited to a single stock, Apple (AAPL). The dataset contains typical pricing variables and it is also augmented with engineered features which are believed to have predictive power. The engineered features used are technical indicators such as the RSI (Relative Strength Indicator), the MACD (Moving Average Convergence Divergence), or simple moving averages.
 
 The logistic models require the creation of a binary target variable. It is calculated by comparing the price of the stock with the price on the following day. If the difference is positive, the target is evaluated as 1, and 0 otherwise. The logistic models are built using Generalized Linear Models suited for the exponential family of distributions (in this case binomial) with the help of the `glm` function.
 
-The Panel regression models also use the engineered features such as RSI, MACD, closing price moving averages, and trade volume moving averages. Since our entire dataset consists of several different stocks over given time periods, the individuality of each company is taken into consideration using a fixed effects panel model. The closing price is then predicted factoring in the individual specific company effects.  
-
 The autoregressive models only make use of the price time series and fits a model that explains a given time series based on its previous values and how correlated it is to its lags (previous values). Auto Regressive Integrated Moving Average models (ARIMA) are 3 parameter models that can be used to forecast future values. The parameter p represents the AR (auto regressive) term, d is the MA (moving average) term and I (integration) is the order of differentiation required to make the series stationary.
 
+The Panel regression models also use the engineered features such as RSI, MACD, closing price moving averages, and trade volume moving averages. Since our entire dataset consists of several different stocks over given time periods, the individuality of each company is taken into consideration using a fixed effects panel model. The closing price is then predicted factoring in the individual specific company effects.  
 
 
 # Experimentation and Results
-Describe the specifics of what you did (data exploration, data preparation, model building, model selection, model evaluation, etc.), and what you found out (statistical analyses, interpretation and discussion of the results, etc.).
 
-### Data Description
+## Data Description
 
 The variables description are as follows:
 
@@ -141,7 +126,7 @@ head(dataset)
 ```
 
 
-### Data Processing
+## Data Processing
 
 The only necessary processing of the data is formatting the date column appropriately.
 
@@ -149,7 +134,7 @@ The only necessary processing of the data is formatting the date column appropri
 dataset$date <- as.Date(dataset$date, format="%m/%d/%Y")
 ```
 
-#### Feature Engineering
+## Feature Engineering
 
 The dataset is augmented with technicals indicators from the `ta-lib` package and the target variable for the logistic model is created. Observations are required to be dropped where NA values are introduced due to the shifting required by the window functions. We are interested in rates of change instead of value in order to be able to any stocks, which will not have the same price.
 
@@ -187,7 +172,7 @@ AAPL_model1_data$TARGET <- factor(AAPL_model1_data$TARGET)
 head(AAPL_model1_data,10)
 ```
 
-### Data Exploration
+## Data Exploration
 
 The stock price for AAPL over the years are risen steadily. There are two important periods of decline but the overall trends remains positive. These periods of decline should provide balance to the dataset. 
 
@@ -218,9 +203,9 @@ corrplot( corr.d, type = "upper", diag = FALSE )
 AAPL_model1_data %>% ggplot(aes(x=TARGET)) + geom_histogram(stat="count")
 ```
 
-### Modeling
+## Modeling
 
-#### Model 1 (Logistic)
+### Model 1 (Logistic)
 
 ```{r}
 # Initialize a df that will store the metrics of models
@@ -315,15 +300,15 @@ The results of the logistic models are displayed below. The in-sample testing ac
 models.df
 ```
 
-#### Model 2 - Autoregressive Model
+### Model 2 (Autoregressive Models)
 
 In this section we drop all the predictors but the close price of the time series. We only use information contain the series itself to fit a model and make predictions. The AAPL stock price had an underlying trend but large fluctuations. We need to verify if certain conditions are met in order to model this time series. We first look at the autocorrelation of the series and see that the series is highly correlated with its previous values with a significant lag. We also consider the PACF which removes variations explained by earlier lags so we get only the relevant features.
 
-Identification of an AR model is often done using the PACF while MA models use the ACF. The order of the model is determined by the numer of significant lags taken into account. The PACF suggests ar AR(1) model and a regression line of time t onto time t-1 shows a close linear fit and a highly statistical coefficient of approximately 1 for `t-1`. However, the slowly decaying ACF suggests that the series is not stationary and that some degree of differentiation might be required to stabilize the mean.
+Identification of an AR model is often done using the PACF while MA models use the ACF. The order of the model is determined by the number of significant lags taken into account. The PACF suggests ar AR(1) model and a regression line of time t onto time t-1 shows a close linear fit and a highly statistical coefficient of approximately 1 for `t-1`. A few methods are used to arrive at the estiamte but the coefficient is consistent. However, the slowly decaying ACF suggests that the series is not stationary and that some degree of differentiation might be required to stabilize the mean.
 
 
 ```{r}
-par(mfrow=c(3,1))
+par(mfrow=c(2,2))
 acf(AAPL$close)
 pacf(AAPL$close)
 
@@ -339,7 +324,7 @@ abline(m2.lm, col=3, lwd=2)
 summary(m2.lm)
 ```
 
-We use the generalized least squares method to obtain more information on the mode. We specify an error correlation structure of order 1. 
+We use the generalized least squares method to obtain more information on the mode. We specify an error correlation structure of order 1. We note that the coefficient estiamte is again 1 and the AIC is 5478. This will serve as a comparison of more complex models.
 
 ```{r}
 AAPL_close <- ts(AAPL$close)
@@ -354,12 +339,6 @@ m2.gls.0 <- update(m2.gls, correlation=NULL)
 anova(m2.gls, m2.gls.0) # AR(1) vs Uncorrelated errors
 ```
 
-```{r}
-m2.gls_fitted <- AAPL_close - residuals(m2.gls)
-plot(AAPL$close, type = "l", col = 4, lty = 1)
-points(m2.gls_fitted, type = "l", col = 2, lty = 2)
-```
-
 Fitting an AR(1) model using the `ar` function confirms the coefficient of approxmiately 1 (0.997).
 
 ```{r}
@@ -368,36 +347,43 @@ m2.ar1_fitted <- AAPL$close - residuals(m2.ar1)
 m2.ar1
 ```
 
+We can view the fitted of the GLS and AR(1) models side by side.
+
 ```{r}
-plot(AAPL$close, type = "l", col = 4, lty = 1)
+par(mfrow=c(1,2))
+m2.gls_fitted <- AAPL_close - residuals(m2.gls)
+plot(AAPL$close, type = "l", col = 4, lty = 1, main="GLS")
+points(m2.gls_fitted, type = "l", col = 2, lty = 2)
+
+plot(AAPL$close, type = "l", col = 4, lty = 1, main="AR(1)")
 points(m2.ar1_fitted, type = "l", col = 2, lty = 2)
 ```
 
+
 We noted earlier that the slowly decaying structure of the ACF suggested that the series is not stationary. We verify this claim using the Dickey Fuller tests below. The null hypothesis that the series is not stationary is not rejected for the original series, but rejected for the once differentiated series. Therefore, the original series is not stationary and should be differentiated to stabilize the mean.
 
-
+Dickey Fuller Test on time series:
 ```{r message=FALSE, warning=FALSE}
-print('DFT on time series:')
-adf.test(AAPL_close)
-print('DFT on differentiated time series:')
+adf.test(diff(AAPL$close, differences=1))
+```
+
+Dickey Fuller Test on differentiated time series:
+```{r message=FALSE, warning=FALSE}
 adf.test(diff(AAPL$close, differences=1))
 ```
 
 #### ARIMA
 
-Here we look at the first two differentials. The higher order differentials have mean 0 but the variance seems to increase in the last part of the series. 
+ARIMA models allows to combine the AR structure seen above with differentiation and moving average terms.
 
-```{r}
-par(mfrow=c(2,1))
-APPLdiff1 <- diff(AAPL$close, differences=1)
-APPLdiff2 <- diff(AAPL$close, differences=2)
-```
+Here we look at the first two differentials. The higher order differentials have mean 0 but the variance seems to increase in the last part of the series. 
 
 ##### Order 1 differential
 
 The order 1 differential shows the highest correlation at position 0 and a significant lag at position 6, while the partial ACF seenms to show periodic behavior with a few significant lags at 7 and 8.
 
 ```{r}
+APPLdiff1 <- diff(AAPL$close, differences=1)
 par(mfrow=c(2,2))
 acf(APPLdiff1, lag.max=20)             
 pacf(APPLdiff1, lag.max=20)
@@ -410,6 +396,7 @@ plot.ts(APPLdiff1)
 On the other hand, the order two differential has several meaningful lags at position 1 and 7, and the partial ACF decays and stays significant until lag 6.
 
 ```{r}
+APPLdiff2 <- diff(AAPL$close, differences=2)
 par(mfrow=c(2,2))
 acf(APPLdiff2, lag.max=20)             
 pacf(APPLdiff2, lag.max=20)
@@ -434,11 +421,15 @@ arimamodels <- function(p,d,q) {
   # A specification of the non-seasonal part of the ARIMA model: the three components (p, d, q) are the AR order, the degree of differencing, and the MA order. ARMA(p,q)
   arima.model <- arima(AAPL$close, order = c(p,d,q))
   arima.model_fitted <- AAPL$close - residuals(arima.model)
-  df <- tibble(model=paste0(p,d,q), coef=paste0(list(round(arima.model$coef,3)), loglik=arima.model$loglik, aic=arima.model$aic))
+  df <- tibble(model=paste0(p,d,q), loglik=arima.model$loglik, aic=arima.model$aic)
   return.list <- list(model=arima.model,fitted=arima.model_fitted, df=df)
   return(return.list)
 }
 ```
+
+#### Model Results
+
+The results of the ARIMA models listed above are printed here. We find that the model with the lowest AIC is the first order differential AR(7) model with a value of 5466. However is is also a complex model with 8 parameters. A smaller model with marginally decreased AIC is preffered. We can choose for the any of the remaining 3 parameter models. We select the second order MA(1) model at the best model. 
 
 ```{r}
 # First order models
@@ -462,109 +453,92 @@ arimadf <- rbind(arimadf, m621$df)
 arimadf
 ```
 
-```{r}
-par(mfrow=c(2,2))
-#plot(AAPL$close, type = "l", col = 4, lty = 1)
-plot(m710$fitted, type = "l", col = 2, lty = 2)
-#plot(AAPL$close, type = "l", col = 4, lty = 1)
-plot(m012$fitted, type = "l", col = 2, lty = 2)
-#plot(AAPL$close, type = "l", col = 4, lty = 1)
-plot(m111$fitted, type = "l", col = 2, lty = 2)
-```
-
+The coefficients for the best model are listed below and we can also see from the graph that the model is a good fit. 
 
 ```{r}
-par(mfrow=c(2,2))
-#plot(AAPL$close, type = "l", col = 4, lty = 1)
-plot(m120$fitted, type = "l", col = 2, lty = 2)
-#plot(AAPL$close, type = "l", col = 4, lty = 1)
-plot(m021$fitted, type = "l", col = 2, lty = 2)
-#plot(AAPL$close, type = "l", col = 4, lty = 1)
-plot(m620$fitted, type = "l", col = 2, lty = 2)
-#plot(AAPL$close, type = "l", col = 4, lty = 1)
-plot(m621$fitted, type = "l", col = 2, lty = 2)
-```
-
-
-
-Best Model:
-
-```{r}
-# A specification of the non-seasonal part of the ARIMA model: the three components (p, d, q) are the AR order, the degree of differencing, and the MA order.
-model2.arima021 <- arima(AAPL$close, order = c(0, 2, 1))
-model2.arima021_fitted <- AAPL$close - residuals(model2.arima021)
-model2.arima021
+m021$model
 ```
 
 ```{r}
 plot(AAPL$close, type = "l", col = 4, lty = 1)
-points(model2.arima021_fitted, type = "l", col = 2, lty = 2)
+points(m021$fitted, type = "l", col = 2, lty = 2)
 ```
 
+We can now use the model to forecast the price of the stock. In the example below the price is predicted for the next 150 trading days. Confidence intervals (shown in blue) are provided at 80% and 95% levels.
 
 ```{r}
-library("forecast")
 AAPLforecast <- forecast(m021$model, h=150)
-```
-
-```{r}
 autoplot(AAPLforecast)
 ```
 
 #### Forecast vs Actual
 
-Using 70% training data
-
 ```{r}
-AAPLsubset <- AAPL$close[1:round(0.7*length(AAPL$close))] 
-model3.arima021 <- arima(AAPLsubset, order = c(0, 2, 1))
-model3.arima021_fitted <- AAPLsubset - residuals(model3.arima021)
-model3.arima021
-```
-
-
-```{r}
-boundary <- round(length(AAPL$close)*.7)
-end <- length(AAPL$close)
-data <- tibble(date=AAPL$date, price=AAPL$close, prediction = NA, fitted=NA, Low95 = NA,
+arimaforecast <- function(stock, ticker) {
+  # Subset the training data, fit model and get fitted valyes
+  training_subset <- stock$close[1:round(0.7*length(AAPL$close))] 
+  model <- arima(training_subset, order = c(0, 2, 1))
+  fitted_values <- training_subset - residuals(model)
+  
+  boundary <- round(length(stock$close)*.7)
+  end <- length(stock$close)
+  data <- tibble(date=stock$date, price=stock$close, prediction = NA, fitted=NA, Low95 = NA,
          Low80 = NA,
          High95 = NA,
          High80 = NA)
-AAPLsubsetforecast <- forecast(model3.arima021, h=377)
-forecast_df <- fortify(as.data.frame(AAPLsubsetforecast)) %>% as_tibble()
-forecast_df <- forecast_df %>%
-  rename("Low95" = "Lo 95",
-         "Low80" = "Lo 80",
-         "High95" = "Hi 95",
-         "High80" = "Hi 80",
-         "Forecast" = "Point Forecast")
-#data[boundary:end,3:7] <- forecast_df
-data$fitted <- c(as.vector(model3.arima021_fitted),rep(NA,(end-boundary)))
-data$prediction <- c(rep(NA,boundary),forecast_df$Forecast)
-data$Low80 <- c(rep(NA,boundary),forecast_df$Low80)
-data$High80 <- c(rep(NA,boundary),forecast_df$High80)
-data$Low95 <- c(rep(NA,boundary),forecast_df$Low95)
-data$High95 <- c(rep(NA,boundary),forecast_df$High95)
-tail(data)
+  stocksubsetforecast <- forecast(model, h=377)
+  forecast_df <- fortify(as.data.frame(stocksubsetforecast)) %>% as_tibble()
+  forecast_df <- forecast_df %>%
+    rename("Low95" = "Lo 95",
+           "Low80" = "Lo 80",
+           "High95" = "Hi 95",
+           "High80" = "Hi 80",
+           "Forecast" = "Point Forecast")
+  data$fitted <- c(as.vector(fitted_values),rep(NA,(end-boundary)))
+  data$prediction <- c(rep(NA,boundary),forecast_df$Forecast)
+  data$Low80 <- c(rep(NA,boundary),forecast_df$Low80)
+  data$High80 <- c(rep(NA,boundary),forecast_df$High80)
+  data$Low95 <- c(rep(NA,boundary),forecast_df$Low95)
+  data$High95 <- c(rep(NA,boundary),forecast_df$High95)
+  
+  ggplot(data, aes(x = date)) + 
+    geom_ribbon(aes(ymin = Low95, ymax = High95, fill = "95%")) +
+    geom_ribbon(aes(ymin = Low80, ymax = High80, fill = "80%")) +
+    geom_point(aes(y = price, colour = "price"), size = 1) +
+    geom_line(aes(y = price, group = 1, colour = "price"), 
+              linetype = "dotted", size = 0.75) +
+    geom_line(aes(y = fitted, group = 2, colour = "fitted"), size = 0.75) +
+    geom_line(aes(y = prediction, group = 3, colour = "prediction"), size = 0.75) +
+    scale_x_date(breaks = scales::pretty_breaks(), date_labels = "%b %y") +
+    scale_colour_brewer(name = "Legend", type = "qual", palette = "Dark2") +
+    scale_fill_brewer(name = "Intervals") +
+    guides(colour = guide_legend(order = 1), fill = guide_legend(order = 2)) +
+    theme_bw(base_size = 14) +
+    ggtitle(ticker)
+}
 ```
-```{r, warning=FALSE}
-ggplot(data, aes(x = date)) + 
-  geom_ribbon(aes(ymin = Low95, ymax = High95, fill = "95%")) +
-  geom_ribbon(aes(ymin = Low80, ymax = High80, fill = "80%")) +
-  geom_point(aes(y = price, colour = "price"), size = 1) +
-  geom_line(aes(y = price, group = 1, colour = "price"), 
-            linetype = "dotted", size = 0.75) +
-  geom_line(aes(y = fitted, group = 2, colour = "fitted"), size = 0.75) +
-  geom_line(aes(y = prediction, group = 3, colour = "prediction"), size = 0.75) +
-  scale_x_date(breaks = scales::pretty_breaks(), date_labels = "%b %y") +
-  scale_colour_brewer(name = "Legend", type = "qual", palette = "Dark2") +
-  scale_fill_brewer(name = "Intervals") +
-  guides(colour = guide_legend(order = 1), fill = guide_legend(order = 2)) +
-  theme_bw(base_size = 14)
+
+Now that we have a well-fiting model that can predict the stock price we can compare the prediction performance to the actual price of the stock by subsetting a training set using the first 70% of the data and predicting on the remaining 30% of the trading days. We find that the actual price of AAPL remain within the 80% and 95% confidence interval ribbons. The actual price is slightly lower that the linearly predicted price. We also tested how the structure of this ARIMA model generalized to other stock price time series. Below are price prediction for Microsoft and IBM. In the case of the former, the price stays in the upper range of the of the 95% confidence interval and even exceeds it. The final price is well above the prediction. The forecast for IBM is more within the range of the linear predictor seems a reasonable estimation of the movement.
+
+```{r message=FALSE, warning=FALSE}
+arimaforecast(AAPL,'AAPL')
+```
+
+```{r}
+MSFT <- dataset %>% filter(ticker=='MSFT') 
+IBM <- dataset %>% filter(ticker=='IBM') 
+```
+
+```{r message=FALSE, warning=FALSE}
+arimaforecast(MSFT,'MSFT')
+```
+
+```{r message=FALSE, warning=FALSE}
+arimaforecast(IBM,'IBM')
 ```
 
 
-### Model 3: Panel
+### Model 3 (Panel Regression)
 For the 3rd model we will attempt to panel models on the stocks dataset as this dataset provides data across stocks and over time, thus having both cross-sectional and time-series dimensions. The general assumption for this dataset is that there is correlation over time for a given stock, but each stock is independent of other stocks. This dataset has not have any time-invariant regressors.
 
 #### Balance dataset
@@ -705,25 +679,13 @@ Conclude your findings, limitations, and suggest areas for future work.
 
 In this paper, we implemented models using logistic regression, panel regression, and auto-regressive models using ARIMA.
 
-The logistic models which try to predict the direction of the next day's movement yielded poor results. Hardly any of the predictor variable were significant, and the classification accuracies were around 52% which is hardly better than guessing. **<More things to add??????>**
+The logistic models which try to predict the direction of the next day's movement yielded poor results. Hardly any of the predictor variable were significant, and the classification accuracies were around 52% which is hardly better than guessing. The multicollinearity issues that were addressed did not improve the results so this model was abandonned. Some improvements are possible using a larger dataset of multiple stocks or using different target variables.
+
+The auto-regressive models that predict subsequent values of a stock time series were of greater use. This required finding a suitable combination of parameters to fit the data closely. Simple linear regression suggested that an AR(1) could be used where the predictor is the previous value of the price. We estimated the coefficients and fit a model but also noted that the series was not stationary and should be differentiated in order to stabilize the mean to conform with the modeling assumptions. We progress some a simple AR(1) auto-regressive model to include the differentiation parameter as well as the moving average to the structure. A variety of models were fit and it was found that smalle models were preferred. The model selected as the best model was a second order differential model with a MA(1) structure. We were able to test its validity by splitting stock data into training and test sets to evaluate the performance of the model. Surprsingly, the MA(1) consistently capture the movement of the stock price within its confidence intervals. The intervals remain fairly wide and the linear trend is not garanteed to reflect the actual price of the stock at any time, but only centers the trend.
 
 For Panel Regression we created and compared the significance of 3 models, the Pooled OLS, Fixed Effects, and Random Effects models. Within the Fixed Model, we tried the First Differences estimator which while having explaining the most variability produced results which do not make sense therefore was discarded. The remaining 3 models had similar explanation of variability, but given our dataset and the nature of it only the Fixed Effect model should be applicable. The Breusch–Pagan Lagrange Multiplier Test (LM Test) and Hausman Test showed support for this over the Pooled OLS and Random Effect models because every company has innate characteristics that impact it's closing price. The limitation of the Fixed Effect model was it could not predict results for the test dataset due to an unresolvable multicollinearity issue with the engineered dataset. Resolution of this would require different feature set to be engineered and is left for future work.
 
-The auto-regressive models that predict subsequent values of a stock time series were of greater use. This required finding a suitable combination of parameters to fit the data closely. **<More things to add??????>**
-
 Given these 3 models, the auto-regressive models using ARIMA produced the most stable results. The output of each of the 3 models is different making comparison of each to each other problematic. The logistic model produces binary results, the panel model predicts actual close values, and the auto-regressive model estimates general stock trend over a given period of time. Given that it is a difficult task to produce a fairly accurate prediction of stock prices by trade day, the auto-regressive ARIMA model that gives trends over periods of time is a better and more suitable method determining/estimating stock price movement
-  
-
-
-\newpage
-# Appendix A. Figures
-
-
-\newpage
-# Appendix B. Tables
-
-\newpage
-# Appendix C. Code
 
 ```{r Code, echo=T, eval=F}
 install_load <- function(pkg){
@@ -734,5 +696,4 @@ install_load <- function(pkg){
 }
 ```
 
-\newpage
-# References
+
