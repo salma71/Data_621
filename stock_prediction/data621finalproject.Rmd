@@ -191,6 +191,8 @@ AAPL_full %>%
   facet_wrap(~key, scales = 'free')
 ```
 
+The correlation plot reveals that some variable are nearly perfectly correlated. This makes sense given that some of these variables generally move together or are derived from another.
+
 ```{r}
 library(corrplot)
 corr_dataframe <- AAPL_model1_data %>% mutate_if(is.factor, as.numeric)
@@ -199,7 +201,9 @@ corr.d[ lower.tri( corr.d, diag = TRUE ) ] <- NA
 corrplot( corr.d, type = "upper", diag = FALSE )
 ```
 
-```{r}
+The target variable we created has a few more observations where the movement was positive. This seems reasonable.
+
+```{r message=FALSE, warning=FALSE}
 AAPL_model1_data %>% ggplot(aes(x=TARGET)) + geom_histogram(stat="count")
 ```
 
@@ -240,7 +244,7 @@ build_model <- function(id, formula, data) {
   metrics <- lapply(metrics, round, 3)
   
   #plot(roc(results$target.class,glm.probs), print.auc = TRUE)
-  model.df <- tibble(id=id, formula=formula, res.deviance=metrics$res.deviance, null.deviance=metrics$null.deviance, 
+  model.df <- tibble(id=id, res.deviance=metrics$res.deviance, null.deviance=metrics$null.deviance, 
                          aic=metrics$aic, accuracy=metrics$accuracy, sensitivity=metrics$sensitivity, specificity=metrics$specificity, precision=metrics$precision)
   model.list <- list(model=glm.fit, df_info=model.df)
   return(model.list)
@@ -257,8 +261,9 @@ models.df <- rbind(models.df,model.full$df_info)
 #summary(model.full)
 ```
 
+##### Variance Inflation Factors
+
 ```{r echo=FALSE}
-print("VIF:")
 car::vif(model.full$model)
 ```
 
@@ -287,7 +292,7 @@ model.m1c  <- build_model('model.m1c', "TARGET ~ .", data = m1c_data_trimmed )
 models.df <- rbind(models.df,model.m1c$df_info)
 summary(model.m1c)
 ```
-
+##### Variance Inflation Factors
 ```{r}
 car::vif(model.m1c$model)
 ```
@@ -409,9 +414,9 @@ Form these observations, we can study the following ARMA (autoregressive moving 
 * First Order ARIMA(0,1,2): MA(1) moving average structure
 * First Order ARIMA(1,1,1): ARMA(1,1) combination
 
-* Second Order ARIMA(1,2,0): AR(1) autoregressive struction
+* Second Order ARIMA(1,2,0): AR(1) autoregressive structure
 * Second Order ARIMA(0,2,1): MA(1) moving average structure
-* Second Order ARIMA(6,2,0): AR(6) autoregressive struction
+* Second Order ARIMA(6,2,0): AR(6) autoregressive structure
 * Second Order ARIMA(6,2,1): ARMA(6,1) combination
 
 ```{r}
@@ -675,7 +680,6 @@ phtest(stocks_m3_random, stocks_m3_within)
 
 
 # Discussion and Conclusion
-Conclude your findings, limitations, and suggest areas for future work.
 
 In this paper, we implemented models using logistic regression, panel regression, and auto-regressive models using ARIMA.
 
