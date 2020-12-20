@@ -41,10 +41,11 @@ library(data.table)
 library(car)
 library(caret)
 library(nlme)
+library(kableExtra)
 ```
 
 # Abstract
-Use 250 words or less to summarize your problem, methodology, and major outcomes.
+*Use 250 words or less to summarize your problem, methodology, and major outcomes.*
 
 Problem:
 Methodology:
@@ -64,7 +65,7 @@ The panel models
 
 
 # Key Words
-Select a few key words (up to five) related to your work.
+*Select a few key words (up to five) related to your work.*
 
 1. Time series
 2. Logistic regression
@@ -72,7 +73,7 @@ Select a few key words (up to five) related to your work.
 4. Panel regression
 
 # Introduction
-Describe the background and motivation of your problem.
+*Describe the background and motivation of your problem.*
 
 Finding reliable ways to predict stock prices is a difficult exercise and the methods used often yield unsatisfactory results. A lot of stock market data is readily available and it is important to find significant predictors variables amongst all the options. If we believe that the price of a stock, or the direction of its movement can be predicted using recent information then we can look at variables associated with recent movements with indicators such as RSI or moving averages as well as intraday variatioins in price via the OHLC prices.
 
@@ -80,15 +81,21 @@ If on other the hand we believe that trends and long term movements are a better
 
 
 # Literature Review
-Discuss how other researchers have addressed similar problems, what their achievements are, and what the advantage and drawbacks of each reviewed approach are. Explain how your investigation is similar or different to the state-of-the- art. Please cite the relevant papers where appropriate.
+*Discuss how other researchers have addressed similar problems, what their achievements are, and what the advantage and drawbacks of each reviewed approach are. Explain how your investigation is similar or different to the state-of-the- art. Please cite the relevant papers where appropriate.*
 
 
 # Methodology
-Discuss the key aspects of your problem, data set and regression model(s). Given that you are working on real-world data, explain at a high-level your exploratory data analysis, how you prepared the data for regression modeling, your process for building regression models, and your model selection.
+*Discuss the key aspects of your problem, data set and regression model(s). Given that you are working on real-world data, explain at a high-level your exploratory data analysis, how you prepared the data for regression modeling, your process for building regression models, and your model selection.*
 
 - EDA showing basic time series and indicators
 - Data preparation: create new variables? created an up/down indicator
 - Models to try
+
+The dataset is composed of a variety of stocks. Fur the purpose of brevity, the data exploration will be limited to a single stock, Apple (AAPL). The dataset contains typical pricing variables and it is also augmented with engineered features which are believe to have predictive power. The engineered features used are technical indicators such as the RSI (Relative Strength Indicator), the MACD (Moving Average Convergence Divergence), or simple moving averages.
+
+The logistic models require the creation of a binary target variable. It is calculated by comparing the price of the stock with the price on the following day. If the difference is positive, the target is avaluated as 1, and 0 otherwise. The logistic models are built using Generalized Linear Models suited for the exponential family of distributions (in this case binomial) with the help of the `glm` function.
+
+The autoregressive models only makes use of the price time series and fits a model that explains a given time series based on its previous values and how correlated it is to its lags (previous values). Auto Regressive Integrated Moving Average models (ARIMA) are 3 parameter models that can be used to forecast future values. The parameter p represent the AR (auto regressive) term, d is the MA (moving average) term and I (integration) is the order of differentiation required to make the series stationary.
 
 
 # Experimentation and Results
@@ -117,6 +124,15 @@ The variables description are as follows:
 ```{r message=FALSE, warning=FALSE}
 dataset <- read_csv('https://raw.githubusercontent.com/salma71/Data_621/master/Project_Proposal/stocks_combined.csv')
 tickers <- read_csv('https://raw.githubusercontent.com/salma71/Data_621/master/Project_Proposal/tickers.csv')
+```
+
+The tickers available in this dataset are listed below. We will be focusing on the AAPL stock which is described below.
+
+```{r}
+tickers
+```
+
+```{r}
 skim(dataset)
 ```
 
@@ -127,35 +143,28 @@ head(dataset)
 
 ### Data Processing
 
+The only necessary processing of the data is formatting the date column appropriately.
+
 ```{r}
 dataset$date <- as.Date(dataset$date, format="%m/%d/%Y")
 ```
 
-### Data Exploration
+#### Feature Engineering
+
+The dataset is augmented with technicals indicators from the `ta-lib` package and the target variable for the logistic model is created. Observations are required to be dropped where NA values are introduced due to the shifting required by the window functions. We are interested in rates of change instead of value in order to be able to any stocks, which will not have the same price.
+
+- *TARGET*: the binaby target variable for the logistic model 
+- *MACD*: the MACD signal (only) using the typical 12 and 26 window sizes
+- *m5*: momentum indicator over the last 5 days (moving average of one trading week)
+- *m20*: momentum indicator over the last 20 days (moving average of one trading month)
+- *vol1*: rate of change of the volume over the last day
+- *vol5*: rate of change of the volume over the last five dasy (one trading week)
+
 
 ```{r}
 AAPL <- dataset %>% filter(ticker=='AAPL') 
-AAPL %>% ggplot(aes(x=date,y=close)) + geom_line()
-```
 
-
-
-
-
-#### Data Transformation for Logistic Model
-
-1. Modify changePercent/change to be our binary target variable
-2. Create predictor variables that are not stock dependent like price
-- MACD and sig
-- Momentum_5 day change % (week)
-- Momentum_20 day change % (month)
-- RSI
-- Volume change
-
-3. Remove observations containing NAs generated by diffential variables (first 26+9 rows as determined by MACD)
-
-```{r}
-
+# Augment data frame
 AAPL_full <- AAPL %>% mutate(macd=MACD(Cl(AAPL), nFast=12, nSlow=26, nSig=9, maType=SMA)[,1], 
                         m5=momentum(AAPL$close, n=5), 
                         m20=momentum(AAPL$close, n=20), 
@@ -165,8 +174,28 @@ AAPL_full <- AAPL %>% mutate(macd=MACD(Cl(AAPL), nFast=12, nSlow=26, nSig=9, maT
                         drop_na() %>%
                       select(-c(date,ticker,label, changeOverTime))
 
-head(AAPL_full,10)
+# Create target variable
+AAPL_model1_data <- AAPL_full%>% 
+                  mutate(TARGET=if_else(shift(close, n=1, fill=NA, type="lead") > close, 1, 0)) %>%
+                  #select(-c(date,ticker,label,open,high,low,close,volume,unadjustedVolume,vwap,change,changeOverTime)) %>%
+                  drop_na()
+                  
+AAPL_model1_data$TARGET <- factor(AAPL_model1_data$TARGET)
 ```
+
+```{r}
+head(AAPL_model1_data,10)
+```
+
+### Data Exploration
+
+The stock price for AAPL over the years are risen steadily. There are two important periods of decline but the overall trends remains positive. These periods of decline should provide balance to the dataset. 
+
+```{r}
+AAPL %>% ggplot(aes(x=date,y=close)) + geom_line() + ggtitle('AAPL Close Price')
+```
+
+The distributions of the predictor variables are mostly centered. The variables related to volume are skewed to the right tail. The variables close, high and low
 
 ```{r variables_distribution, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 AAPL_full %>% 
@@ -178,18 +207,6 @@ AAPL_full %>%
 ```
 
 
-```{r}
-# Create target variable
-
-AAPL_model1_data <- AAPL_full%>% 
-                  mutate(TARGET=if_else(shift(close, n=1, fill=NA, type="lead") > close, 1, 0)) %>%
-                  #select(-c(date,ticker,label,open,high,low,close,volume,unadjustedVolume,vwap,change,changeOverTime)) %>%
-                  drop_na()
-                  
-AAPL_model1_data$TARGET <- factor(AAPL_model1_data$TARGET)
-
-head(AAPL_model1_data,10)
-```
 
 ```{r}
 library(corrplot)
