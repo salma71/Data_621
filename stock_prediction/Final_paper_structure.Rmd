@@ -42,6 +42,8 @@ library(car)
 library(caret)
 library(nlme)
 library(kableExtra)
+library(plm)
+library(broom)
 library(tseries)
 ```
 
@@ -52,15 +54,13 @@ Problem:
 Methodology:
 Major Outcomes:
 
-There are a few ways of predicting stock prices. From blind guessing to machine learning, many techniques have been tested to try to achieve decent results. Capturing the complexity of the market in a model is a daunting task but it can be broken down in a number of appraoches. 
+There are a few ways of predicting stock prices. From blind guessing to machine learning, many techniques have been tested to try to achieve decent results. Capturing the complexity of the market in a model is a daunting task but it can be broken down in a number of approaches. 
 
 Since predicting the exact percent increase of a stock the next day is difficult, we can instead try instead to predict the direction of the movement. Alternatively, we can look at the trends and seasonality in the data and try to predict with some level of confidence where the price would like in an arbitrary number of days.
 
-In this paper, we implemented models using logistic regression, panel regresssion, generalized least squares (maybe) and autoregressive models using ARIMA.
+In this paper, we implemented models using logistic regression, panel regression, and autoregressive models using ARIMA.
 
-The logistic models which try to predict the direction of the next day's movement yielded poor results. Hardly any of the predictor variable were significant, and the classification accuracies were around 52% which is hardly better than guessing. On the other hand, the auto-regressive models that predict subsequent values of a stock time series were of greater use. This required finding a suitable combination of parameters to fit the data closely. 
-
-The panel models
+The logistic models which try to predict the direction of the next day's movement yielded poor results. Hardly any of the predictor variable were significant, and the classification accuracies were around 52% which is hardly better than guessing. Panel Regression as well as the autoregressive models using ARIMA attempt to predict closing prices of stocks using one stock at a time. Panel Regression attempts to build one model for any number of stocks across the same time periods. Doing this also yielded poor and sporadic results when predicting per stock. On the other hand, the auto-regressive models that predict subsequent values of a stock time series were of greater use. This required finding a suitable combination of parameters to fit the data closely. 
 
 
 
@@ -76,13 +76,9 @@ The panel models
 # Introduction
 *Describe the background and motivation of your problem.*
 
-Finding reliable ways to predict stock prices is a difficult exercise and the methods used often yield unsatisfactory results. A lot of stock market data is readily available and it is important to find significant predictors variables amongst all the options. If we believe that the price of a stock, or the direction of its movement can be predicted using recent information then we can look at variables associated with recent movements with indicators such as RSI or moving averages as well as intraday variatioins in price via the OHLC prices.
+Finding reliable ways to predict stock prices is a difficult exercise and the methods used often yield unsatisfactory results. A lot of stock market data is readily available and it is important to find significant predictors variables amongst all the options. If we believe that the price of a stock, or the direction of its movement can be predicted using recent information then we can look at variables associated with recent movements with indicators such as RSI or moving averages as well as intraday variations in price via the OHLC prices.
 
-If on other the hand we believe that trends and long term movements are a better way to predict prices then time series analysis can be used. The analysist consist of comparing a series of prices such as the close price of a stock with a lagged or shifted version of itself in orde to discern any temporal correlations. This technique requires certain assumptions to be met that require transformations of the data. Through different modeling approaches and parameter tuning, we can prediction what future prices will be to a certain degree of confidence. 
-
-
-# Literature Review
-*Discuss how other researchers have addressed similar problems, what their achievements are, and what the advantage and drawbacks of each reviewed approach are. Explain how your investigation is similar or different to the state-of-the- art. Please cite the relevant papers where appropriate.*
+If on other the hand we believe that trends and long-term movements are a better way to predict prices then time series analysis can be used. The analysis consists of comparing a series of prices such as the close price of a stock with a lagged or shifted version of itself in order to discern any temporal correlations. This technique requires certain assumptions to be met that require transformations of the data. Through different modeling approaches and parameter tuning, we can prediction what future prices will be to a certain degree of confidence.
 
 
 # Methodology
@@ -92,11 +88,14 @@ If on other the hand we believe that trends and long term movements are a better
 - Data preparation: create new variables? created an up/down indicator
 - Models to try
 
-The dataset is composed of a variety of stocks. Fur the purpose of brevity, the data exploration will be limited to a single stock, Apple (AAPL). The dataset contains typical pricing variables and it is also augmented with engineered features which are believe to have predictive power. The engineered features used are technical indicators such as the RSI (Relative Strength Indicator), the MACD (Moving Average Convergence Divergence), or simple moving averages.
+The dataset is composed of a variety of stocks. For the purpose of brevity, the data exploration will be limited to a single stock, Apple (AAPL). The dataset contains typical pricing variables and it is also augmented with engineered features which are believed to have predictive power. The engineered features used are technical indicators such as the RSI (Relative Strength Indicator), the MACD (Moving Average Convergence Divergence), or simple moving averages.
 
-The logistic models require the creation of a binary target variable. It is calculated by comparing the price of the stock with the price on the following day. If the difference is positive, the target is avaluated as 1, and 0 otherwise. The logistic models are built using Generalized Linear Models suited for the exponential family of distributions (in this case binomial) with the help of the `glm` function.
+The logistic models require the creation of a binary target variable. It is calculated by comparing the price of the stock with the price on the following day. If the difference is positive, the target is evaluated as 1, and 0 otherwise. The logistic models are built using Generalized Linear Models suited for the exponential family of distributions (in this case binomial) with the help of the `glm` function.
 
-The autoregressive models only makes use of the price time series and fits a model that explains a given time series based on its previous values and how correlated it is to its lags (previous values). Auto Regressive Integrated Moving Average models (ARIMA) are 3 parameter models that can be used to forecast future values. The parameter p represent the AR (auto regressive) term, d is the MA (moving average) term and I (integration) is the order of differentiation required to make the series stationary.
+The Panel regression models also use the engineered features such as RSI, MACD, closing price moving averages, and trade volume moving averages. Since our entire dataset consists of several different stocks over given time periods, the individuality of each company is taken into consideration using a fixed effects panel model. The closing price is then predicted factoring in the individual specific company effects.  
+
+The autoregressive models only make use of the price time series and fits a model that explains a given time series based on its previous values and how correlated it is to its lags (previous values). Auto Regressive Integrated Moving Average models (ARIMA) are 3 parameter models that can be used to forecast future values. The parameter p represents the AR (auto regressive) term, d is the MA (moving average) term and I (integration) is the order of differentiation required to make the series stationary.
+
 
 
 # Experimentation and Results
@@ -343,6 +342,7 @@ summary(m2.lm)
 We use the generalized least squares method to obtain more information on the mode. We specify an error correlation structure of order 1. 
 
 ```{r}
+AAPL_close <- ts(AAPL$close)
 m2.gls <- gls(AAPL_close ~ time(AAPL_close), correlation = corAR1(form=~1))
 summary(m2.gls)
 ```
@@ -511,7 +511,7 @@ AAPLforecast <- forecast(m021$model, h=150)
 autoplot(AAPLforecast)
 ```
 
-### Forecast vs Actual
+#### Forecast vs Actual
 
 Using 70% training data
 
@@ -530,8 +530,6 @@ data <- tibble(date=AAPL$date, price=AAPL$close, prediction = NA, fitted=NA, Low
          Low80 = NA,
          High95 = NA,
          High80 = NA)
-
-
 AAPLsubsetforecast <- forecast(model3.arima021, h=377)
 forecast_df <- fortify(as.data.frame(AAPLsubsetforecast)) %>% as_tibble()
 forecast_df <- forecast_df %>%
@@ -540,19 +538,16 @@ forecast_df <- forecast_df %>%
          "High95" = "Hi 95",
          "High80" = "Hi 80",
          "Forecast" = "Point Forecast")
-
 #data[boundary:end,3:7] <- forecast_df
-
 data$fitted <- c(as.vector(model3.arima021_fitted),rep(NA,(end-boundary)))
 data$prediction <- c(rep(NA,boundary),forecast_df$Forecast)
 data$Low80 <- c(rep(NA,boundary),forecast_df$Low80)
 data$High80 <- c(rep(NA,boundary),forecast_df$High80)
 data$Low95 <- c(rep(NA,boundary),forecast_df$Low95)
 data$High95 <- c(rep(NA,boundary),forecast_df$High95)
-
 tail(data)
 ```
-```{r}
+```{r, warning=FALSE}
 ggplot(data, aes(x = date)) + 
   geom_ribbon(aes(ymin = Low95, ymax = High95, fill = "95%")) +
   geom_ribbon(aes(ymin = Low80, ymax = High80, fill = "80%")) +
@@ -569,28 +564,155 @@ ggplot(data, aes(x = date)) +
 ```
 
 
-### Model 3
+### Model 3: Panel
+For the 3rd model we will attempt to panel models on the stocks dataset as this dataset provides data across stocks and over time, thus having both cross-sectional and time-series dimensions. The general assumption for this dataset is that there is correlation over time for a given stock, but each stock is independent of other stocks. This dataset has not have any time-invariant regressors.
+
+#### Balance dataset
+Determine if all stocks are observed for all time periods and if unbalanced, balance so that all stocks are observed on the same trade dates. This indicates that some observations will be dropped so that all stocks have an observations on the same trading days
+```{r}
+dataset2 <- dataset %>% select(-label)
+is.pbalanced(dataset2)
+dataset2 <- make.pbalanced(dataset2,balance.type = "shared.times")
+is.pbalanced(dataset2)
+
+```
+#### Create Predictors
+For all stock observations in our dataset, we will create the engineered features: MACD, RSI, m5, m20, v1, and v5
+```{r}
+
+create_predictors <- function(df){
+  df_full <- df %>% mutate(macd=MACD(Cl(df), nFast=12, nSlow=26, nSig=9, maType=SMA)[,1], 
+                        m5=momentum(df$close, n=5), 
+                        m20=momentum(df$close, n=20), 
+                        rsi=RSI(df$close, n=14),
+                        vol1=ROC(df$volume, n=1),
+                        vol5=ROC(df$volume, n=5))
+  return(df_full)
+}
+
+balanced_tickers <- unique(dataset2$ticker)
+dataset2_full <- dataset2 %>% filter(ticker=="AAPL") %>% create_predictors() 
+
+for(i in balanced_tickers[2:length(balanced_tickers)])
+{
+ dataset2_full <- rbind(dataset2_full, dataset2 %>% filter(ticker==i) %>% create_predictors())
+}
+
+dataset2_full %>% filter(date=="2014-05-21")
+
+```
+
+#### Test and Train datasets
+Create test and training datasets for prediction purposes, and ensure both datasets are balanced
+```{r}
+stock_dates <- unique(dataset2_full$date)
+
+test_dates <- tail(stock_dates, 250)
+train_dates <- head(stock_dates, length(stock_dates)-250)
+
+test_stocks <- dataset2_full %>% dplyr::filter(date %in% test_dates)
+train_stocks <- dataset2_full %>% dplyr::filter(date %in% train_dates)
+is.pbalanced(test_stocks)
+is.pbalanced(train_stocks)
+train_stocks <- train_stocks %>% drop_na()
+panel_stocks <- pdata.frame(train_stocks, index = c("ticker", "date"))
+```
+#### Model 3A: Pooled OLS
+A Pooled model on panel data is applies the Ordinary Least Squares technique on the data. It is the most restrictive panel model as cross-sectional dimensions are ignored:
+$y_{it}=\alpha+\beta x_{it}+u_{it}$
 
 
+```{r}
+stocks_m3_pooled <- plm(close ~ macd + m5 + m20,  data = panel_stocks, model = "pooling")
+summary(stocks_m3_pooled)
+Pooled_Model <- glance(stocks_m3_pooled)
+```
+
+#### Fixed Effect Models
+In Fixed affects models we will assume there is an unobserved heterogeneity across the stocks such as each company's core competency, or anything else that is unique to each company and thus something unobserved factored into each company's stock price. This heterogeneity ($\alpha_i$) is not known but we would want to investigate it's correlation with the created predictor variables see it's impact on the closing price: 
+$y_{it}=\alpha_i+\beta x_{it}+u_{it}$
 
 
-### Data Imputation
+##### Model 3B: Fixed Model - Within Estimator
+```{r}
+stocks_m3_within <- plm(close ~ macd + m5 + m20 + rsi + vol5,  data = panel_stocks, model = "within")
+summary(stocks_m3_within)
+Fixed_Model <- glance(stocks_m3_within)
+```
 
-Example for citing @kulkarni_time_2020
+##### Model 3C: Fixed Model - First Difference Estimator
+The First difference estimator uses period changes for each stock, where the individual specific effects (unobserved heterogeneity) is canceled out: 
+$y_{it}-y_{i,t-1} = \beta(x_{it}-x_{i,t-1})+(e_{it}-e_{i,t-1})$
 
-### Model Building
+Looking at the result, we see that while the adjusted $R^2$ is fairly high compared to the fitted values are nonsensical
+```{r}
+stocks_m3_fd <- plm(close ~ macd + m5 + m20 + rsi + vol1 + vol5,  data = panel_stocks, model = "fd")
+summary(stocks_m3_fd)
+Fixed_Model_FD <- glance(stocks_m3_fd)
+fitted.values(stocks_m3_fd)[1:10]
+
+```
+#### Model 3D: Random Effect Model
+In Random affects models assumes no fixed effects.The individual specific effects (unobserved heterogeneity) are not correlated with the predictor variables and are independent of the predictor variables. This would result in the assumption that any residual variation on the dependent variable ( closing price) is random and should randomly distributed with the error term:   
+$y_{it}=\beta x_{it}+(\alpha_i+ e_{it})$
+
+```{r}
+stocks_m3_random <- plm(close ~ macd + m5 + m20 + rsi + vol5,  data = panel_stocks, model = "random")
+summary(stocks_m3_random)
+Random_Model <- glance(stocks_m3_random)
+
+```
+
+#### Panel Model Testing & Selection
+Below is a summary glance of the 4 Panel models run on the stocks dataset. Choosing between either a pooled, fixed effect, or random effect model requires running Breusch–Pagan Lagrange Multiplier and Hausman tests. Of the 4 models below, we will discard the First Difference model due to its nonsensical fitted values
+```{r, warning=FALSE}
+Panel_Model_Summary <- data.frame(Pooled_Model)
+
+Panel_Model_Summary <- rbind(Panel_Model_Summary, Fixed_Model)
+Panel_Model_Summary <- rbind(Panel_Model_Summary, Fixed_Model_FD)
+Panel_Model_Summary <- rbind(Panel_Model_Summary, Random_Model)
 
 
+rownames(Panel_Model_Summary) <- c("Pooled Model", "Fixed Model", "First Difference Model", "Random Model")
+Panel_Model_Summary
+```
+The Breusch–Pagan Lagrange Multiplier Test (LM Test) is used to test for heteroskedasticity in a linear regression model. The null hypothesis assumes homoskedasticity and in the alternate hypothesis heteroskedasticity is assumed. 
 
-### Model Evaluation
+First, we test for Random Effects against OLS. From the test we see that since the p-value is near 0, we reject the null hypothesis. The individual specific effects (unobserved heterogeneity) of each stock are significant and therefore we should not use the Pooled OLS model.
 
+```{r}
+plmtest(stocks_m3_pooled, effect = "individual")
+```
 
+We test the Fixed Effects model against OLS Model, we again see that we reject the null for the alternative hypothesis as the test suggest more support for the Fixed Effect model
 
-### Results
+```{r}
+#LM test for fixed effects vs OLS
+#significant result, more support for fixed effects model over ols
+pFtest(stocks_m3_within, stocks_m3_pooled)
+```
+From the two tests above, we can set aside the Pooled OLS model which ignores both the cross-sectional and time-series dimensions. Next, we compare the Fixed Effects and Random Effects model. We do this using the Hausman Test, which evaluates the consistency of estimators, in our case the fixed effect and random effect estimators. If there is no correlation between the independent variables and the individual specific effects, then both Fixed Effect and Random Effect models are consistent, but the Fixed Effect model is not efficient. Should there be a correlation, then the Fixed Effects model is consistent and the Random Effects model is inconsistent. 
+  
+From the result we see that the null hypothesis is rejected. This indicates that the hypothesis is that individual random effects of each stock are uncorrelated with the error term does not have support. We therefore choose the alternative hypothesis and select the Fixed Effect model
+
+```{r}
+phtest(stocks_m3_random, stocks_m3_within)
+```
 
 
 # Discussion and Conclusion
 Conclude your findings, limitations, and suggest areas for future work.
+
+In this paper, we implemented models using logistic regression, panel regression, and auto-regressive models using ARIMA.
+
+The logistic models which try to predict the direction of the next day's movement yielded poor results. Hardly any of the predictor variable were significant, and the classification accuracies were around 52% which is hardly better than guessing. **<More things to add??????>**
+
+For Panel Regression we created and compared the significance of 3 models, the Pooled OLS, Fixed Effects, and Random Effects models. Within the Fixed Model, we tried the First Differences estimator which while having explaining the most variability produced results which do not make sense therefore was discarded. The remaining 3 models had similar explanation of variability, but given our dataset and the nature of it only the Fixed Effect model should be applicable. The Breusch–Pagan Lagrange Multiplier Test (LM Test) and Hausman Test showed support for this over the Pooled OLS and Random Effect models because every company has innate characteristics that impact it's closing price. The limitation of the Fixed Effect model was it could not predict results for the test dataset due to an unresolvable multicollinearity issue with the engineered dataset. Resolution of this would require different feature set to be engineered and is left for future work.
+
+The auto-regressive models that predict subsequent values of a stock time series were of greater use. This required finding a suitable combination of parameters to fit the data closely. **<More things to add??????>**
+
+Given these 3 models, the auto-regressive models using ARIMA produced the most stable results. The output of each of the 3 models is different making comparison of each to each other problematic. The logistic model produces binary results, the panel model predicts actual close values, and the auto-regressive model estimates general stock trend over a given period of time. Given that it is a difficult task to produce a fairly accurate prediction of stock prices by trade day, the auto-regressive ARIMA model that gives trends over periods of time is a better and more suitable method determining/estimating stock price movement
+  
 
 
 \newpage
@@ -614,5 +736,3 @@ install_load <- function(pkg){
 
 \newpage
 # References
-
-
