@@ -56,8 +56,6 @@ Since predicting the exact percent increase of a stock the next day is difficult
 
 The logistic models which try to predict the direction of the next day's movement yielded poor results. Hardly any of the predictor variable were significant, and the classification accuracies were around 52% which is hardly better than guessing. Panel Regression as well as the autoregressive models using ARIMA attempt to predict closing prices of stocks using one stock at a time. Panel Regression attempts to build one model for any number of stocks across the same time periods. Doing this also yielded poor and sporadic results when predicting per stock. On the other hand, the auto-regressive models that predict subsequent values of a stock time series were of greater use. This required finding a suitable combination of parameters to fit the data closely. 
 
-*ADD PANEL INFO*
-
 # Key Words
 
 1. Time series
