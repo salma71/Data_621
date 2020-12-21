@@ -17,10 +17,7 @@ output:
       smooth_scroll: true
     df_print: paged
 ---
-nocite: |
-  @wickham_ggplot2_2009, @RCoreTeam, @Chang2015
-bibliography: citations.bib
----
+
 
 
 ```{r options_pkgs, echo=F, warning=F, message=F, results=F}
